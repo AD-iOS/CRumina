@@ -65,8 +65,15 @@ fn check_semicolons(contents: &str, filename: &str) {
             continue;
         }
 
+        // 移除行末注释后再检查分号
+        let code_part = if let Some(comment_pos) = trimmed.find("//") {
+            &trimmed[..comment_pos].trim_end()
+        } else {
+            trimmed
+        };
+
         // 检查是否以分号结尾
-        if !trimmed.ends_with(';') && !trimmed.ends_with('{') {
+        if !code_part.ends_with(';') && !code_part.ends_with('{') {
             eprintln!(
                 "Warning: {}:{}: Statement should end with ';'",
                 filename,
