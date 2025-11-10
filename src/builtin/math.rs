@@ -51,6 +51,22 @@ pub fn cos(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Float(val.cos()))
 }
 
+pub fn tan(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("tan expects 1 argument".to_string());
+    }
+    let val = args[0].to_float()?;
+    Ok(Value::Float(val.tan()))
+}
+
+pub fn exp(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("exp expects 1 argument".to_string());
+    }
+    let val = args[0].to_float()?;
+    Ok(Value::Float(val.exp()))
+}
+
 pub fn abs_fn(args: &[Value]) -> Result<Value, String> {
     if args.len() != 1 {
         return Err("abs expects 1 argument".to_string());
