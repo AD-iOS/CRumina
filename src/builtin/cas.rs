@@ -1,4 +1,3 @@
-// CAS (Computer Algebra System) 模块 - 使用 MathCore 实现
 use crate::value::Value;
 use mathcore::MathCore;
 use std::collections::HashMap;
@@ -18,7 +17,7 @@ pub fn cas_parse(args: &[Value]) -> Result<Value, String> {
 
     match &args[0] {
         Value::String(s) => {
-            // 使用 MathCore 解析表达式
+            // 解析表达式
             match MathCore::parse(s) {
                 Ok(expr) => Ok(Value::String(format!("{:?}", expr))),
                 Err(e) => Err(format!("Parse error: {}", e)),
@@ -45,7 +44,7 @@ pub fn cas_differentiate(args: &[Value]) -> Result<Value, String> {
         return Err("cas_differentiate expects string variable".to_string());
     };
 
-    // 使用 MathCore 求导
+    // 求导
     match MathCore::differentiate(&expr_str, &var) {
         Ok(derivative) => Ok(Value::String(format!("{}", derivative))),
         Err(e) => Err(format!("Differentiation error: {}", e)),
@@ -69,7 +68,7 @@ pub fn cas_solve_linear(args: &[Value]) -> Result<Value, String> {
         return Err("cas_solve_linear expects string variable".to_string());
     };
 
-    // 使用 MathCore 求解方程
+    // 求解方程
     match MathCore::solve(&expr_str, &var) {
         Ok(roots) => {
             // 返回第一个根（对于线性方程通常只有一个根）
@@ -106,7 +105,7 @@ pub fn cas_evaluate_at(args: &[Value]) -> Result<Value, String> {
 
     let value = args[2].to_float()?;
 
-    // 使用 MathCore 解析并求值
+    // 解析并求值
     let math = MathCore::new();
     let mut vars = std::collections::HashMap::new();
     vars.insert(var, value);
@@ -216,7 +215,7 @@ pub fn cas_integrate(args: &[Value]) -> Result<Value, String> {
         return Err("cas_integrate expects string variable".to_string());
     };
 
-    // 使用 MathCore 积分
+    // 积分
     match MathCore::integrate(&expr_str, &var) {
         Ok(integral) => Ok(Value::String(format!("{}", integral))),
         Err(e) => Err(format!("Integration error: {}", e)),
@@ -245,7 +244,7 @@ pub fn cas_definite_integral(args: &[Value]) -> Result<Value, String> {
     let lower = args[2].to_float()?;
     let upper = args[3].to_float()?;
 
-    // 使用 MathCore 数值积分
+    // 数值积分
     match MathCore::numerical_integrate(&expr_str, &var, lower, upper) {
         Ok(result) => Ok(Value::Float(result)),
         Err(e) => Err(format!("Integration error: {}", e)),
