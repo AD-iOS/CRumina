@@ -19,6 +19,8 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
     register_fn(globals, "e", math::e);
     register_fn(globals, "sin", math::sin);
     register_fn(globals, "cos", math::cos);
+    register_fn(globals, "tan", math::tan);
+    register_fn(globals, "exp", math::exp);
     register_fn(globals, "abs", math::abs_fn);
     register_fn(globals, "log", math::log);
     register_fn(globals, "factorial", math::factorial);
