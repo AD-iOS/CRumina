@@ -16,18 +16,18 @@ try {
   const wasmBinary = readFileSync(wasmBinaryPath)
   const wasmBase64 = wasmBinary.toString('base64')
 
-  // 移除 import 语句
   wasmBgJs = wasmBgJs.replace(/^import .* from .*?;?\s*$/gm, '')
-  
-  // 移除 export 语句中的 export 关键字,保留函数定义
+
   wasmBgJs = wasmBgJs.replace(/^export function /gm, 'function ')
   wasmBgJs = wasmBgJs.replace(/^export const /gm, 'const ')
-  
-  // 提取所有导出的函数名
+
   const exportedFunctions = []
   const functionRegex = /^function (\w+)\s*\(/gm
-  let match
-  while ((match = functionRegex.exec(wasmBgJs)) !== null) {
+  for (
+    let match = functionRegex.exec(wasmBgJs);
+    match !== null;
+    match = functionRegex.exec(wasmBgJs)
+  ) {
     exportedFunctions.push(match[1])
   }
 
@@ -68,10 +68,10 @@ if (wasm.__wbindgen_start) {
 }
 `
 
-  // 生成导出语句
-  const exportStatements = exportedFunctions.length > 0
-    ? `\nexport { ${exportedFunctions.join(', ')} }`
-    : ''
+  const exportStatements =
+    exportedFunctions.length > 0
+      ? `\nexport { ${exportedFunctions.join(', ')} }`
+      : ''
 
   const finalCode = header + wasmBgJs + initCode + exportStatements
 

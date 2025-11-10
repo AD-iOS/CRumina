@@ -1,9 +1,9 @@
-import { rumina } from './lib/index.mjs';
+import { rumina } from './lib/index.mjs'
 
-const result = await rumina('10 + 20;');
+const result = await rumina('10 + 20;')
 
-if (result.startsWith("Error:")) {
-  console.error(result);
+if (result.startsWith('Error:')) {
+  console.error(result)
 } else {
-  console.log("计算结果:", result);
+  console.log('计算结果:', result)
 }
