@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows
+          # Windows MSVC
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: rumina-cli.exe
@@ -41,19 +41,85 @@ jobs:
             artifact_name: rumina-cli
             asset_name: rumina-cli-macos-arm64
 
-          # Linux
+          # Linux x86/x64 (glibc)
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: rumina-cli
-            asset_name: rumina-cli-linux-x64
+            asset_name: rumina-cli-linux-x64-gnu
           - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
+            target: i686-unknown-linux-gnu
             artifact_name: rumina-cli
-            asset_name: rumina-cli-linux-arm64
+            asset_name: rumina-cli-linux-x86-gnu
+
+          # Linux x86/x64 (musl)
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             artifact_name: rumina-cli
             asset_name: rumina-cli-linux-x64-musl
+
+          # Linux ARM64 (glibc)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm64-gnu
+
+          # Linux ARM64 (musl)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm64-musl
+
+          # Linux ARM (glibc)
+          - os: ubuntu-latest
+            target: arm-unknown-linux-gnueabi
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm-gnueabi
+          - os: ubuntu-latest
+            target: arm-unknown-linux-gnueabihf
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm-gnueabihf
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-armv7-gnueabihf
+
+          # Linux RISC-V (glibc)
+          - os: ubuntu-latest
+            target: riscv64gc-unknown-linux-gnu
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-riscv64-gnu
+
+          # Linux RISC-V (musl)
+          - os: ubuntu-latest
+            target: riscv64gc-unknown-linux-musl
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-riscv64-musl
+
+          # Linux LoongArch (glibc)
+          - os: ubuntu-latest
+            target: loongarch64-unknown-linux-gnu
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-loongarch64-gnu
+
+          # Linux LoongArch (musl)
+          - os: ubuntu-latest
+            target: loongarch64-unknown-linux-musl
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-loongarch64-musl
+
+          # Linux OpenHarmony
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-ohos
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm64-ohos
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-ohos
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-armv7-ohos
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-ohos
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-x64-ohos
 
     steps:
       - name: Checkout code
@@ -64,17 +130,44 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools (Linux ARM64)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+      - name: Install cross-compilation tools
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Install musl tools (Linux musl)
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
+          # x86 32-bit
+          if [[ "${{ matrix.target }}" == "i686-unknown-linux-gnu" ]]; then
+            sudo apt-get install -y gcc-multilib g++-multilib
+          fi
+
+          # ARM64
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]] || \
+             [[ "${{ matrix.target }}" == "aarch64-unknown-linux-musl" ]] || \
+             [[ "${{ matrix.target }}" == "aarch64-unknown-linux-ohos" ]]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          fi
+
+          # ARM 32-bit
+          if [[ "${{ matrix.target }}" == "arm-unknown-linux-gnueabi" ]]; then
+            sudo apt-get install -y gcc-arm-linux-gnueabi g++-arm-linux-gnueabi
+          fi
+
+          if [[ "${{ matrix.target }}" == "arm-unknown-linux-gnueabihf" ]] || \
+             [[ "${{ matrix.target }}" == "armv7-unknown-linux-gnueabihf" ]] || \
+             [[ "${{ matrix.target }}" == "armv7-unknown-linux-ohos" ]]; then
+            sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          fi
+
+          # RISC-V
+          if [[ "${{ matrix.target }}" == "riscv64gc-unknown-linux-gnu" ]] || \
+             [[ "${{ matrix.target }}" == "riscv64gc-unknown-linux-musl" ]]; then
+            sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
+          fi
+
+          # musl tools
+          if [[ "${{ matrix.target }}" == *"musl"* ]]; then
+            sudo apt-get install -y musl-tools
+          fi
 
       - name: Cache cargo registry
         uses: actions/cache@v4
