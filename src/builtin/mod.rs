@@ -47,6 +47,14 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
     register_fn(globals, "decimal", utils::decimal);
     register_fn(globals, "assert", utils::assert);
 
+    // LSR-005: Type conversion functions
+    register_fn(globals, "int", utils::to_int);
+    register_fn(globals, "float", utils::to_float);
+    register_fn(globals, "bool", utils::to_bool);
+    register_fn(globals, "string", utils::to_string_fn);
+    register_fn(globals, "rational", utils::to_rational);
+    register_fn(globals, "complex", utils::to_complex);
+
     // Lamina-compliant string functions (with underscores)
     register_fn(globals, "string_concat", string::concat);
     register_fn(globals, "string_char_at", string::char_at);
