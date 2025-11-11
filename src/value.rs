@@ -30,11 +30,21 @@ pub enum Value {
         name: String,
         params: Vec<String>,
         body: Box<Stmt>,
+        decorators: Vec<String>, // LSR-011: Decorators applied to this function
     },
     Module(Rc<RefCell<HashMap<String, Value>>>),
     NativeFunction {
         name: String,
         func: fn(&[Value]) -> Result<Value, String>,
+    },
+    CurriedFunction {
+        original: Box<Value>,       // 原始函数
+        collected_args: Vec<Value>, // 已收集的参数
+        total_params: usize,        // 总参数数量
+    },
+    MemoizedFunction {
+        original: Box<Value>,                       // 原始函数
+        cache: Rc<RefCell<HashMap<String, Value>>>, // 参数->结果的缓存
     },
 }
 
@@ -67,6 +77,8 @@ impl Value {
             Value::Function { .. } => "function",
             Value::Module(_) => "module",
             Value::NativeFunction { .. } => "native_function",
+            Value::CurriedFunction { .. } => "curried_function",
+            Value::MemoizedFunction { .. } => "memoized_function",
         }
     }
 
@@ -231,6 +243,21 @@ impl fmt::Display for Value {
             }
             Value::Module(_) => write!(f, "<module>"),
             Value::NativeFunction { name, .. } => write!(f, "<native function {}>", name),
+            Value::CurriedFunction {
+                collected_args,
+                total_params,
+                ..
+            } => {
+                write!(
+                    f,
+                    "<curried function {}/{} args>",
+                    collected_args.len(),
+                    total_params
+                )
+            }
+            Value::MemoizedFunction { cache, .. } => {
+                write!(f, "<memoized function ({} cached)>", cache.borrow().len())
+            }
         }
     }
 }

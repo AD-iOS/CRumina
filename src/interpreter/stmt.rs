@@ -68,12 +68,24 @@ impl Interpreter {
                 Ok(())
             }
 
-            Stmt::FuncDef { name, params, body } => {
-                let func = Value::Function {
+            Stmt::FuncDef {
+                name,
+                params,
+                body,
+                decorators,
+            } => {
+                let mut func = Value::Function {
                     name: name.clone(),
                     params: params.clone(),
                     body: Box::new(Stmt::Block(body.clone())),
+                    decorators: decorators.clone(),
                 };
+
+                // LSR-011: Apply decorators
+                for decorator in decorators {
+                    func = self.apply_decorator(&decorator, func)?;
+                }
+
                 self.set_variable(name.clone(), func);
                 Ok(())
             }

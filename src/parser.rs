@@ -67,7 +67,8 @@ impl Parser {
             Token::TypeComplex => self.parse_var_decl_with_type(Some(DeclaredType::Complex)),
             Token::TypeArray => self.parse_var_decl_with_type(Some(DeclaredType::Array)),
             Token::Struct => self.parse_struct_decl(),
-            Token::Func => self.parse_func_def(),
+            Token::At => self.parse_decorated_func_def(), // LSR-011: Decorator support
+            Token::Func => self.parse_func_def_with_decorators(Vec::new()),
             Token::Return => self.parse_return(),
             Token::If => self.parse_if(),
             Token::While => self.parse_while(),
@@ -174,7 +175,35 @@ impl Parser {
         })
     }
 
-    fn parse_func_def(&mut self) -> Result<Stmt, String> {
+    fn parse_decorated_func_def(&mut self) -> Result<Stmt, String> {
+        // Parse decorators (@decorator_name)
+        let mut decorators = Vec::new();
+        while self.current_token() == &Token::At {
+            self.advance(); // Skip @
+
+            if let Token::Ident(name) = self.current_token() {
+                decorators.push(name.clone());
+                self.advance();
+            } else {
+                return Err(format!(
+                    "Expected decorator name after @, found {:?}",
+                    self.current_token()
+                ));
+            }
+        }
+
+        // Expect func keyword after decorators
+        if self.current_token() != &Token::Func {
+            return Err(format!(
+                "Expected 'func' after decorator, found {:?}",
+                self.current_token()
+            ));
+        }
+
+        self.parse_func_def_with_decorators(decorators)
+    }
+
+    fn parse_func_def_with_decorators(&mut self, decorators: Vec<String>) -> Result<Stmt, String> {
         self.advance(); // 跳过 func
 
         let name = if let Token::Ident(n) = self.current_token() {
@@ -217,7 +246,12 @@ impl Parser {
         let body = self.parse_block_statements()?;
         self.expect(Token::RBrace)?;
 
-        Ok(Stmt::FuncDef { name, params, body })
+        Ok(Stmt::FuncDef {
+            name,
+            params,
+            body,
+            decorators,
+        })
     }
 
     fn parse_return(&mut self) -> Result<Stmt, String> {

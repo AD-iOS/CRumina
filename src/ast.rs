@@ -47,6 +47,7 @@ pub enum Stmt {
         name: String,
         params: Vec<String>,
         body: Vec<Stmt>,
+        decorators: Vec<String>, // LSR-011: Function decorators
     },
 
     // 返回语句

@@ -145,6 +145,28 @@ impl Interpreter {
         }
         self.globals.borrow().contains_key(name)
     }
+
+    /// Apply a decorator to a function (LSR-011)
+    fn apply_decorator(&self, decorator: &str, func: Value) -> Result<Value, String> {
+        match decorator {
+            "pure" => {
+                // @pure: Mark function as pure (no side effects)
+                // For now, this is just metadata - no runtime behavior change
+                Ok(func)
+            }
+            "memoize" => {
+                // @memoize: Cache function results
+                Ok(Value::MemoizedFunction {
+                    original: Box::new(func),
+                    cache: Rc::new(RefCell::new(HashMap::new())),
+                })
+            }
+            _ => {
+                eprintln!("Warning: Unknown decorator '{}', ignoring", decorator);
+                Ok(func)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
