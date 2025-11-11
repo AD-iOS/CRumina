@@ -185,7 +185,9 @@ jobs:
           cd artifacts
           for dir in */; do
             cd "$dir"
-            sha256sum * > checksums.txt
+            for file in *; do
+              sha256sum "$file" | awk '{print $1}' > "${file}.sha256"
+            done
             cd ..
           done
 
