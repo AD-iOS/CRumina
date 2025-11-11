@@ -1,0 +1,462 @@
+/// Virtual Machine implementation for Rumina
+/// 
+/// This module implements a bytecode VM with an x86_64-inspired instruction set.
+/// The VM uses a stack-based execution model with register-like local variables.
+
+use crate::error::RuminaError;
+use crate::value::Value;
+use crate::vm_ops::VMOperations;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+/// VM Instruction Set (x86_64-inspired CISC design)
+#[derive(Debug, Clone, PartialEq)]
+pub enum OpCode {
+    // ===== Data Movement Instructions (MOV family) =====
+    /// Push a constant value onto the stack
+    /// Similar to: PUSH imm
+    PushConst(Value),
+    
+    /// Push a variable value onto the stack
+    /// Similar to: MOV reg, [addr]
+    PushVar(String),
+    
+    /// Pop value from stack and store in variable
+    /// Similar to: MOV [addr], reg
+    PopVar(String),
+    
+    /// Duplicate top stack value
+    /// Similar to: PUSH [rsp]
+    Dup,
+    
+    /// Pop and discard top stack value
+    /// Similar to: ADD rsp, 8
+    Pop,
+    
+    // ===== Arithmetic Instructions (ADD, SUB, MUL, DIV family) =====
+    /// Add top two stack values
+    /// Similar to: ADD rax, rbx
+    Add,
+    
+    /// Subtract top two stack values (TOS-1 - TOS)
+    /// Similar to: SUB rax, rbx
+    Sub,
+    
+    /// Multiply top two stack values
+    /// Similar to: MUL rbx
+    Mul,
+    
+    /// Divide top two stack values (TOS-1 / TOS)
+    /// Similar to: DIV rbx
+    Div,
+    
+    /// Modulo operation
+    /// Similar to: IDIV (with remainder in rdx)
+    Mod,
+    
+    /// Power operation (TOS-1 ^ TOS)
+    Pow,
+    
+    /// Negate top stack value
+    /// Similar to: NEG rax
+    Neg,
+    
+    /// Factorial operation (postfix !)
+    Factorial,
+    
+    // ===== Logical Instructions (CMP, TEST, AND, OR family) =====
+    /// Logical NOT
+    /// Similar to: NOT rax
+    Not,
+    
+    /// Logical AND
+    /// Similar to: AND rax, rbx
+    And,
+    
+    /// Logical OR
+    /// Similar to: OR rax, rbx
+    Or,
+    
+    /// Compare equal
+    /// Similar to: CMP + SETE
+    Eq,
+    
+    /// Compare not equal
+    /// Similar to: CMP + SETNE
+    Neq,
+    
+    /// Compare greater than
+    /// Similar to: CMP + SETG
+    Gt,
+    
+    /// Compare greater or equal
+    /// Similar to: CMP + SETGE
+    Gte,
+    
+    /// Compare less than
+    /// Similar to: CMP + SETL
+    Lt,
+    
+    /// Compare less or equal
+    /// Similar to: CMP + SETLE
+    Lte,
+    
+    // ===== Control Flow Instructions (JMP, CALL, RET family) =====
+    /// Unconditional jump to address
+    /// Similar to: JMP addr
+    Jump(usize),
+    
+    /// Jump if false (pop condition from stack)
+    /// Similar to: TEST + JZ
+    JumpIfFalse(usize),
+    
+    /// Jump if true (pop condition from stack)
+    /// Similar to: TEST + JNZ
+    JumpIfTrue(usize),
+    
+    /// Call function (address to jump to)
+    /// Similar to: CALL addr
+    Call(usize),
+    
+    /// Call function by name/variable
+    /// Similar to: CALL [addr]
+    CallVar(String, usize), // (function name, argument count)
+    
+    /// Return from function
+    /// Similar to: RET
+    Return,
+    
+    // ===== Array/Structure Instructions (LEA, MOV family) =====
+    /// Create array from N stack values
+    /// Similar to: MOV [addr], ... (repeated)
+    MakeArray(usize),
+    
+    /// Create struct from N key-value pairs on stack
+    MakeStruct(usize),
+    
+    /// Array index access (push array[index])
+    /// Similar to: MOV rax, [rbx + rcx*8]
+    Index,
+    
+    /// Member access (push obj.member)
+    /// Similar to: MOV rax, [rbx + offset]
+    Member(String),
+    
+    /// Assign to array element
+    IndexAssign,
+    
+    /// Assign to struct member
+    MemberAssign(String),
+    
+    // ===== Function Definition Instructions =====
+    /// Define a function
+    DefineFunc {
+        name: String,
+        params: Vec<String>,
+        body_start: usize,
+        body_end: usize,
+        decorators: Vec<String>,
+    },
+    
+    /// Create lambda/closure
+    MakeLambda {
+        params: Vec<String>,
+        body_start: usize,
+        body_end: usize,
+    },
+    
+    // ===== Scope Management =====
+    /// Enter new local scope
+    /// Similar to: PUSH rbp; MOV rbp, rsp
+    EnterScope,
+    
+    /// Exit local scope
+    /// Similar to: MOV rsp, rbp; POP rbp
+    ExitScope,
+    
+    // ===== Control Structures =====
+    /// Begin loop (mark position for continue)
+    LoopBegin,
+    
+    /// End loop (mark position for break)
+    LoopEnd,
+    
+    /// Break from loop
+    Break,
+    
+    /// Continue loop
+    Continue,
+    
+    // ===== Special Instructions =====
+    /// No operation
+    /// Similar to: NOP
+    Nop,
+    
+    /// Halt execution
+    /// Similar to: HLT
+    Halt,
+}
+
+/// Bytecode chunk - compiled function or program
+#[derive(Debug, Clone)]
+pub struct ByteCode {
+    /// Sequence of instructions
+    pub instructions: Vec<OpCode>,
+    
+    /// Debug information: instruction -> line number mapping
+    pub line_numbers: Vec<Option<usize>>,
+    
+    /// Constants pool (for optimization)
+    pub constants: Vec<Value>,
+}
+
+impl ByteCode {
+    pub fn new() -> Self {
+        ByteCode {
+            instructions: Vec::new(),
+            line_numbers: Vec::new(),
+            constants: Vec::new(),
+        }
+    }
+    
+    /// Add an instruction
+    pub fn emit(&mut self, op: OpCode, line: Option<usize>) {
+        self.instructions.push(op);
+        self.line_numbers.push(line);
+    }
+    
+    /// Get current instruction pointer (for jumps)
+    pub fn current_address(&self) -> usize {
+        self.instructions.len()
+    }
+    
+    /// Patch a jump instruction at given address
+    pub fn patch_jump(&mut self, address: usize, target: usize) {
+        match &mut self.instructions[address] {
+            OpCode::Jump(addr) |
+            OpCode::JumpIfFalse(addr) |
+            OpCode::JumpIfTrue(addr) => {
+                *addr = target;
+            }
+            _ => panic!("Attempted to patch non-jump instruction at {}", address),
+        }
+    }
+}
+
+/// Call frame for function calls
+#[derive(Debug, Clone)]
+struct CallFrame {
+    /// Return address (instruction pointer to return to)
+    return_address: usize,
+    
+    /// Base pointer for local variables
+    base_pointer: usize,
+    
+    /// Function name (for error reporting)
+    function_name: String,
+    
+    /// Local variables in this frame
+    locals: HashMap<String, Value>,
+}
+
+/// Virtual Machine state
+pub struct VM {
+    /// Bytecode being executed
+    bytecode: ByteCode,
+    
+    /// Instruction pointer
+    ip: usize,
+    
+    /// Data stack
+    stack: Vec<Value>,
+    
+    /// Call stack (for function calls)
+    call_stack: Vec<CallFrame>,
+    
+    /// Global variables
+    globals: Rc<RefCell<HashMap<String, Value>>>,
+    
+    /// Current local variables (top of call stack)
+    locals: HashMap<String, Value>,
+    
+    /// Loop break/continue targets
+    loop_stack: Vec<(usize, usize)>, // (continue_target, break_target)
+    
+    /// Halt flag
+    halted: bool,
+    
+    /// Recursion depth tracking
+    recursion_depth: usize,
+    max_recursion_depth: usize,
+}
+
+impl VM {
+    /// Create new VM instance
+    pub fn new(globals: Rc<RefCell<HashMap<String, Value>>>) -> Self {
+        VM {
+            bytecode: ByteCode::new(),
+            ip: 0,
+            stack: Vec::new(),
+            call_stack: Vec::new(),
+            globals,
+            locals: HashMap::new(),
+            loop_stack: Vec::new(),
+            halted: false,
+            recursion_depth: 0,
+            max_recursion_depth: 4000,
+        }
+    }
+    
+    /// Load bytecode into VM
+    pub fn load(&mut self, bytecode: ByteCode) {
+        self.bytecode = bytecode;
+        self.ip = 0;
+        self.halted = false;
+    }
+    
+    /// Execute loaded bytecode
+    pub fn run(&mut self) -> Result<Option<Value>, RuminaError> {
+        while !self.halted && self.ip < self.bytecode.instructions.len() {
+            let op = self.bytecode.instructions[self.ip].clone();
+            self.ip += 1;
+            
+            self.execute_instruction(op)?;
+        }
+        
+        // Return top of stack if present, otherwise None
+        Ok(self.stack.pop())
+    }
+    
+    /// Execute a single instruction
+    fn execute_instruction(&mut self, op: OpCode) -> Result<(), RuminaError> {
+        match op {
+            OpCode::PushConst(value) => {
+                self.stack.push(value);
+            }
+            
+            OpCode::PushVar(name) => {
+                let value = self.get_variable(&name)?;
+                self.stack.push(value);
+            }
+            
+            OpCode::PopVar(name) => {
+                let value = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                self.set_variable(name, value);
+            }
+            
+            OpCode::Dup => {
+                let value = self.stack.last()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?
+                    .clone();
+                self.stack.push(value);
+            }
+            
+            OpCode::Pop => {
+                self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+            }
+            
+            OpCode::Add => self.binary_op(|a, b| a.vm_add(b))?,
+            OpCode::Sub => self.binary_op(|a, b| a.vm_sub(b))?,
+            OpCode::Mul => self.binary_op(|a, b| a.vm_mul(b))?,
+            OpCode::Div => self.binary_op(|a, b| a.vm_div(b))?,
+            OpCode::Mod => self.binary_op(|a, b| a.vm_mod(b))?,
+            OpCode::Pow => self.binary_op(|a, b| a.vm_pow(b))?,
+            
+            OpCode::Neg => {
+                let value = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let result = value.vm_neg()
+                    .map_err(|e| RuminaError::runtime(e))?;
+                self.stack.push(result);
+            }
+            
+            OpCode::Halt => {
+                self.halted = true;
+            }
+            
+            OpCode::Nop => {
+                // Do nothing
+            }
+            
+            _ => {
+                return Err(RuminaError::runtime(format!(
+                    "Unimplemented opcode: {:?}",
+                    op
+                )));
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// Helper for binary operations
+    fn binary_op<F>(&mut self, f: F) -> Result<(), RuminaError>
+    where
+        F: FnOnce(&Value, &Value) -> Result<Value, String>,
+    {
+        let right = self.stack.pop()
+            .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+        let left = self.stack.pop()
+            .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+        
+        let result = f(&left, &right)
+            .map_err(|e| RuminaError::runtime(e))?;
+        
+        self.stack.push(result);
+        Ok(())
+    }
+    
+    /// Get variable from locals or globals
+    fn get_variable(&self, name: &str) -> Result<Value, RuminaError> {
+        // Check locals first
+        if let Some(value) = self.locals.get(name) {
+            return Ok(value.clone());
+        }
+        
+        // Check globals
+        if let Some(value) = self.globals.borrow().get(name) {
+            return Ok(value.clone());
+        }
+        
+        Err(RuminaError::runtime(format!("Undefined variable: {}", name)))
+    }
+    
+    /// Set variable in locals
+    fn set_variable(&mut self, name: String, value: Value) {
+        self.locals.insert(name, value);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_vm_push_pop() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        
+        let mut bytecode = ByteCode::new();
+        bytecode.emit(OpCode::PushConst(Value::Int(42)), None);
+        bytecode.emit(OpCode::PushConst(Value::Int(10)), None);
+        bytecode.emit(OpCode::Halt, None);
+        
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+        
+        assert_eq!(result, Some(Value::Int(10)));
+    }
+    
+    #[test]
+    fn test_bytecode_emit() {
+        let mut bytecode = ByteCode::new();
+        bytecode.emit(OpCode::PushConst(Value::Int(1)), Some(1));
+        bytecode.emit(OpCode::Add, Some(1));
+        
+        assert_eq!(bytecode.instructions.len(), 2);
+        assert_eq!(bytecode.line_numbers.len(), 2);
+    }
+}
