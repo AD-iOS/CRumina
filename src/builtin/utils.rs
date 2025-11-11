@@ -396,3 +396,131 @@ pub fn assert(args: &[Value]) -> Result<Value, String> {
 
     Ok(Value::Null)
 }
+
+// LSR-005: Type conversion functions
+pub fn to_int(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("int expects 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Int(_) => Ok(args[0].clone()),
+        Value::BigInt(n) => {
+            use num::ToPrimitive;
+            n.to_i64()
+                .map(Value::Int)
+                .ok_or_else(|| "BigInt too large to convert to int".to_string())
+        }
+        Value::Float(f) => Ok(Value::Int(*f as i64)),
+        Value::Bool(b) => Ok(Value::Int(if *b { 1 } else { 0 })),
+        Value::String(s) => s
+            .parse::<i64>()
+            .map(Value::Int)
+            .map_err(|_| format!("Cannot convert string '{}' to int", s)),
+        Value::Rational(r) => {
+            use num::ToPrimitive;
+            let n = r.to_f64().ok_or("Cannot convert rational to float")? as i64;
+            Ok(Value::Int(n))
+        }
+        _ => Err(format!("Cannot convert {} to int", args[0].type_name())),
+    }
+}
+
+pub fn to_float(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("float expects 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Float(_) => Ok(args[0].clone()),
+        Value::Int(n) => Ok(Value::Float(*n as f64)),
+        Value::BigInt(n) => {
+            use num::ToPrimitive;
+            n.to_f64()
+                .map(Value::Float)
+                .ok_or_else(|| "BigInt too large to convert to float".to_string())
+        }
+        Value::Bool(b) => Ok(Value::Float(if *b { 1.0 } else { 0.0 })),
+        Value::String(s) => s
+            .parse::<f64>()
+            .map(Value::Float)
+            .map_err(|_| format!("Cannot convert string '{}' to float", s)),
+        Value::Rational(r) => {
+            use num::ToPrimitive;
+            let n = r.to_f64().ok_or("Cannot convert rational to float")?;
+            Ok(Value::Float(n))
+        }
+        _ => Err(format!("Cannot convert {} to float", args[0].type_name())),
+    }
+}
+
+pub fn to_bool(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("bool expects 1 argument".to_string());
+    }
+
+    Ok(Value::Bool(args[0].is_truthy()))
+}
+
+pub fn to_string_fn(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("string expects 1 argument".to_string());
+    }
+
+    Ok(Value::String(format!("{}", args[0])))
+}
+
+pub fn to_rational(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("rational expects 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Rational(_) => Ok(args[0].clone()),
+        Value::Int(n) => {
+            use num::BigInt;
+            Ok(Value::Rational(num::rational::Ratio::new(
+                BigInt::from(*n),
+                BigInt::from(1),
+            )))
+        }
+        Value::Float(f) => {
+            use num::BigInt;
+            Ok(Value::Rational(
+                num::rational::Ratio::from_float(*f)
+                    .unwrap_or(num::rational::Ratio::new(BigInt::from(0), BigInt::from(1))),
+            ))
+        }
+        Value::Bool(b) => {
+            use num::BigInt;
+            let n = if *b { 1 } else { 0 };
+            Ok(Value::Rational(num::rational::Ratio::new(
+                BigInt::from(n),
+                BigInt::from(1),
+            )))
+        }
+        _ => Err(format!(
+            "Cannot convert {} to rational",
+            args[0].type_name()
+        )),
+    }
+}
+
+pub fn to_complex(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("complex expects 1 argument".to_string());
+    }
+
+    match &args[0] {
+        Value::Complex(_, _) => Ok(args[0].clone()),
+        Value::Int(n) => Ok(Value::Complex(
+            Box::new(Value::Int(*n)),
+            Box::new(Value::Int(0)),
+        )),
+        Value::Float(f) => Ok(Value::Complex(
+            Box::new(Value::Float(*f)),
+            Box::new(Value::Int(0)),
+        )),
+        _ => Err(format!("Cannot convert {} to complex", args[0].type_name())),
+    }
+}

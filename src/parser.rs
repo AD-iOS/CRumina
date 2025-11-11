@@ -690,6 +690,39 @@ impl Parser {
                     Ok(Expr::Ident(name))
                 }
             }
+            // LSR-005: Allow type keywords to be used as function names
+            Token::TypeInt => {
+                self.advance();
+                Ok(Expr::Ident("int".to_string()))
+            }
+            Token::TypeFloat => {
+                self.advance();
+                Ok(Expr::Ident("float".to_string()))
+            }
+            Token::TypeBool => {
+                self.advance();
+                Ok(Expr::Ident("bool".to_string()))
+            }
+            Token::TypeString => {
+                self.advance();
+                Ok(Expr::Ident("string".to_string()))
+            }
+            Token::TypeRational => {
+                self.advance();
+                Ok(Expr::Ident("rational".to_string()))
+            }
+            Token::TypeIrrational => {
+                self.advance();
+                Ok(Expr::Ident("irrational".to_string()))
+            }
+            Token::TypeComplex => {
+                self.advance();
+                Ok(Expr::Ident("complex".to_string()))
+            }
+            Token::TypeArray => {
+                self.advance();
+                Ok(Expr::Ident("array".to_string()))
+            }
             Token::LBracket => self.parse_array(),
             Token::LBrace => self.parse_struct(),
             Token::LParen => {

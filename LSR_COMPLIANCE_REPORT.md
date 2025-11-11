@@ -15,19 +15,6 @@
 - ❌ 柯里化 (Currying) - 需要特殊语法支持
 - ❌ 装饰器 (@pure等) - 需要扩展语法
 
-### LSR-005: Lamina的变量
-- 状态：草案
-- 当前实现：
-  - ✅ 类型声明语法已完全实现 (`int x = 5`, `float y = 3.14`, etc.)
-  - ✅ 支持8种类型关键字：int, float, bool, string, rational, irrational, complex, array
-  - ✅ var关键字自动推导
-  - ✅ 隐式类型转换（声明时自动转换）
-  - ✅ 丰富的类型转换实现（int, float, bool, string, rational, complex, bigint互转）
-  - ⚠️ 显式类型转换函数调用语法未实现 (`int("32")`需要作为可调用类型)
-- 符合度：90%
-- 测试文件：test_lsr_005_types.lm
-
-
 ### LSR-006: 多值函数Set
 - 状态：未评估
 - 需要进一步研究规范内容
