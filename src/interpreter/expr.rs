@@ -52,6 +52,33 @@ impl Interpreter {
                 if let Expr::Member { object, member } = &**func {
                     let obj = self.eval_expr(object)?;
 
+                    // 特殊处理 .curried() 方法
+                    if member == "curried" {
+                        match &obj {
+                            Value::Function { params, .. } | Value::Lambda { params, .. } => {
+                                // curried() 不接受参数
+                                if !args.is_empty() {
+                                    return Err("curried() does not take arguments".to_string());
+                                }
+                                // 返回柯里化版本
+                                return Ok(Value::CurriedFunction {
+                                    original: Box::new(obj.clone()),
+                                    collected_args: Vec::new(),
+                                    total_params: params.len(),
+                                });
+                            }
+                            Value::NativeFunction { .. } => {
+                                return Err("Cannot curry native functions".to_string());
+                            }
+                            _ => {
+                                return Err(format!(
+                                    "Type {} does not have method 'curried'",
+                                    obj.type_name()
+                                ));
+                            }
+                        }
+                    }
+
                     // 获取方法
                     let method = match &obj {
                         Value::Struct(s) => {

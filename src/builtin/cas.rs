@@ -19,6 +19,7 @@ fn value_to_expr_string(value: &Value) -> Result<String, String> {
             name: _,
             params,
             body,
+            ..
         } => {
             // For lambda/function, we need to convert the body to an expression string
             // This is a simplified conversion that handles common cases

@@ -310,6 +310,10 @@ impl Lexer {
                     self.advance();
                     Token::Backslash
                 }
+                '@' => {
+                    self.advance();
+                    Token::At
+                }
                 '(' => {
                     self.advance();
                     Token::LParen

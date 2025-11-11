@@ -79,6 +79,7 @@ pub enum Token {
 
     // 特殊
     Arrow, // ->
+    At,    // @ (decorator)
     Eof,
 }
 

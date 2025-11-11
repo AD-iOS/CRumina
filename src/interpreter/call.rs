@@ -10,7 +10,61 @@ use super::Interpreter;
 impl Interpreter {
     pub(super) fn call_function(&mut self, func: Value, args: Vec<Value>) -> Result<Value, String> {
         match func {
-            Value::Function { name, params, body } => {
+            Value::MemoizedFunction { original, cache } => {
+                // Create cache key from arguments
+                let cache_key = args
+                    .iter()
+                    .map(|arg| format!("{}", arg))
+                    .collect::<Vec<_>>()
+                    .join(",");
+
+                // Check cache
+                if let Some(cached_result) = cache.borrow().get(&cache_key) {
+                    return Ok(cached_result.clone());
+                }
+
+                // Call original function
+                let result = self.call_function(*original, args)?;
+
+                // Store in cache
+                cache.borrow_mut().insert(cache_key, result.clone());
+
+                Ok(result)
+            }
+
+            Value::CurriedFunction {
+                original,
+                mut collected_args,
+                total_params,
+            } => {
+                // 收集新的参数
+                collected_args.extend(args);
+
+                // 检查是否已收集到所有参数
+                if collected_args.len() >= total_params {
+                    // 如果参数过多,报错
+                    if collected_args.len() > total_params {
+                        return Err(format!(
+                            "Too many arguments: expected {}, got {}",
+                            total_params,
+                            collected_args.len()
+                        ));
+                    }
+                    // 调用原始函数
+                    self.call_function(*original, collected_args)
+                } else {
+                    // 还需要更多参数,返回新的柯里化函数
+                    Ok(Value::CurriedFunction {
+                        original,
+                        collected_args,
+                        total_params,
+                    })
+                }
+            }
+
+            Value::Function {
+                name, params, body, ..
+            } => {
                 if params.len() != args.len() {
                     return Err(format!(
                         "Expected {} arguments, got {}",
