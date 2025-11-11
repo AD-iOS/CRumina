@@ -1,11 +1,14 @@
 pub mod ast;
 pub mod builtin;
+pub mod compiler;
 pub mod error;
 pub mod interpreter;
 pub mod lexer;
 pub mod parser;
 pub mod token;
 pub mod value;
+pub mod vm;
+pub mod vm_ops;
 
 // WASM 接口模块
 #[cfg(target_arch = "wasm32")]
