@@ -461,4 +461,78 @@ mod tests {
         
         assert!(compiler.symbols.resolve("x").is_some());
     }
+    
+    #[test]
+    fn test_compile_and_run_simple() {
+        use crate::vm::VM;
+        use std::rc::Rc;
+        use std::cell::RefCell;
+        use std::collections::HashMap;
+        
+        let mut compiler = Compiler::new();
+        
+        // Compile: 10 + 20
+        let stmts = vec![
+            Stmt::Expr(Expr::Binary {
+                left: Box::new(Expr::Int(10)),
+                op: BinOp::Add,
+                right: Box::new(Expr::Int(20)),
+            })
+        ];
+        
+        let bytecode = compiler.compile(stmts).unwrap();
+        
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        vm.load(bytecode);
+        
+        let result = vm.run().unwrap();
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 30),
+            _ => panic!("Expected Int(30), got {:?}", result),
+        }
+    }
+    
+    #[test]
+    fn test_compile_and_run_variables() {
+        use crate::vm::VM;
+        use std::rc::Rc;
+        use std::cell::RefCell;
+        use std::collections::HashMap;
+        
+        let mut compiler = Compiler::new();
+        
+        // Compile: var x = 10; var y = 20; x + y
+        let stmts = vec![
+            Stmt::VarDecl {
+                name: "x".to_string(),
+                is_bigint: false,
+                declared_type: None,
+                value: Expr::Int(10),
+            },
+            Stmt::VarDecl {
+                name: "y".to_string(),
+                is_bigint: false,
+                declared_type: None,
+                value: Expr::Int(20),
+            },
+            Stmt::Expr(Expr::Binary {
+                left: Box::new(Expr::Ident("x".to_string())),
+                op: BinOp::Add,
+                right: Box::new(Expr::Ident("y".to_string())),
+            }),
+        ];
+        
+        let bytecode = compiler.compile(stmts).unwrap();
+        
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        vm.load(bytecode);
+        
+        let result = vm.run().unwrap();
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 30),
+            _ => panic!("Expected Int(30), got {:?}", result),
+        }
+    }
 }
