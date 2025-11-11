@@ -373,6 +373,201 @@ impl VM {
                 self.stack.push(result);
             }
             
+            OpCode::Not => {
+                let value = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let result = value.vm_not()
+                    .map_err(|e| RuminaError::runtime(e))?;
+                self.stack.push(result);
+            }
+            
+            OpCode::Factorial => {
+                let value = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let result = value.vm_factorial()
+                    .map_err(|e| RuminaError::runtime(e))?;
+                self.stack.push(result);
+            }
+            
+            // Comparison operations
+            OpCode::Eq => self.binary_op(|a, b| a.vm_eq(b))?,
+            OpCode::Neq => self.binary_op(|a, b| a.vm_neq(b))?,
+            OpCode::Gt => self.binary_op(|a, b| a.vm_gt(b))?,
+            OpCode::Gte => self.binary_op(|a, b| a.vm_gte(b))?,
+            OpCode::Lt => self.binary_op(|a, b| a.vm_lt(b))?,
+            OpCode::Lte => self.binary_op(|a, b| a.vm_lte(b))?,
+            
+            // Logical operations
+            OpCode::And => self.binary_op(|a, b| a.vm_and(b))?,
+            OpCode::Or => self.binary_op(|a, b| a.vm_or(b))?,
+            
+            // Control flow
+            OpCode::Jump(addr) => {
+                self.ip = addr;
+            }
+            
+            OpCode::JumpIfFalse(addr) => {
+                let condition = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                if !condition.is_truthy() {
+                    self.ip = addr;
+                }
+            }
+            
+            OpCode::JumpIfTrue(addr) => {
+                let condition = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                if condition.is_truthy() {
+                    self.ip = addr;
+                }
+            }
+            
+            // Array/Struct operations
+            OpCode::MakeArray(count) => {
+                let mut elements = Vec::new();
+                for _ in 0..count {
+                    let elem = self.stack.pop()
+                        .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                    elements.push(elem);
+                }
+                elements.reverse(); // Restore original order
+                self.stack.push(Value::Array(Rc::new(RefCell::new(elements))));
+            }
+            
+            OpCode::Index => {
+                let index = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let array = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                
+                match &array {
+                    Value::Array(arr) => {
+                        if let Value::Int(idx) = index {
+                            let arr_ref = arr.borrow();
+                            let idx = if idx < 0 {
+                                (arr_ref.len() as i64 + idx) as usize
+                            } else {
+                                idx as usize
+                            };
+                            
+                            if idx < arr_ref.len() {
+                                self.stack.push(arr_ref[idx].clone());
+                            } else {
+                                return Err(RuminaError::runtime(format!(
+                                    "Array index out of bounds: {} (length: {})",
+                                    idx, arr_ref.len()
+                                )));
+                            }
+                        } else {
+                            return Err(RuminaError::runtime(
+                                "Array index must be an integer".to_string()
+                            ));
+                        }
+                    }
+                    Value::String(s) => {
+                        if let Value::Int(idx) = index {
+                            let idx = if idx < 0 {
+                                (s.len() as i64 + idx) as usize
+                            } else {
+                                idx as usize
+                            };
+                            
+                            if idx < s.len() {
+                                let ch = s.chars().nth(idx).unwrap();
+                                self.stack.push(Value::String(ch.to_string()));
+                            } else {
+                                return Err(RuminaError::runtime(format!(
+                                    "String index out of bounds: {} (length: {})",
+                                    idx, s.len()
+                                )));
+                            }
+                        } else {
+                            return Err(RuminaError::runtime(
+                                "String index must be an integer".to_string()
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(RuminaError::runtime(format!(
+                            "Cannot index type {}",
+                            array.type_name()
+                        )));
+                    }
+                }
+            }
+            
+            OpCode::Member(member_name) => {
+                let object = self.stack.pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                
+                match &object {
+                    Value::Struct(s) => {
+                        let s_ref = s.borrow();
+                        if let Some(value) = s_ref.get(&member_name) {
+                            self.stack.push(value.clone());
+                        } else {
+                            return Err(RuminaError::runtime(format!(
+                                "Struct does not have member '{}'",
+                                member_name
+                            )));
+                        }
+                    }
+                    _ => {
+                        return Err(RuminaError::runtime(format!(
+                            "Cannot access member of type {}",
+                            object.type_name()
+                        )));
+                    }
+                }
+            }
+            
+            OpCode::EnterScope => {
+                // Push a new local scope frame
+                // For now, we'll handle this with the existing locals HashMap
+                // In a full implementation, we'd push a new scope onto a scope stack
+            }
+            
+            OpCode::ExitScope => {
+                // Pop the local scope frame
+                // For now, this is a no-op as we clear locals on function return
+            }
+            
+            OpCode::Return => {
+                // Pop the call frame and jump back
+                if let Some(_frame) = self.call_stack.pop() {
+                    // The return value is already on the stack
+                    // In a full implementation, we'd restore the IP from the frame
+                    self.halted = true; // For now, just halt
+                } else {
+                    // Top-level return - halt execution
+                    self.halted = true;
+                }
+            }
+            
+            OpCode::Break => {
+                if let Some((_, break_target)) = self.loop_stack.last() {
+                    self.ip = *break_target;
+                } else {
+                    return Err(RuminaError::runtime("Break outside of loop".to_string()));
+                }
+            }
+            
+            OpCode::Continue => {
+                if let Some((continue_target, _)) = self.loop_stack.last() {
+                    self.ip = *continue_target;
+                } else {
+                    return Err(RuminaError::runtime("Continue outside of loop".to_string()));
+                }
+            }
+            
+            OpCode::LoopBegin => {
+                // Mark loop begin - will be set by compiler
+            }
+            
+            OpCode::LoopEnd => {
+                // Mark loop end - will be set by compiler
+            }
+            
             OpCode::Halt => {
                 self.halted = true;
             }
@@ -458,5 +653,91 @@ mod tests {
         
         assert_eq!(bytecode.instructions.len(), 2);
         assert_eq!(bytecode.line_numbers.len(), 2);
+    }
+    
+    #[test]
+    fn test_vm_arithmetic() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        
+        let mut bytecode = ByteCode::new();
+        bytecode.emit(OpCode::PushConst(Value::Int(10)), None);
+        bytecode.emit(OpCode::PushConst(Value::Int(5)), None);
+        bytecode.emit(OpCode::Add, None);
+        bytecode.emit(OpCode::Halt, None);
+        
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+        
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 15),
+            _ => panic!("Expected Int(15)"),
+        }
+    }
+    
+    #[test]
+    fn test_vm_variables() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        
+        let mut bytecode = ByteCode::new();
+        // x = 42
+        bytecode.emit(OpCode::PushConst(Value::Int(42)), None);
+        bytecode.emit(OpCode::PopVar("x".to_string()), None);
+        // push x
+        bytecode.emit(OpCode::PushVar("x".to_string()), None);
+        bytecode.emit(OpCode::Halt, None);
+        
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+        
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 42),
+            _ => panic!("Expected Int(42)"),
+        }
+    }
+    
+    #[test]
+    fn test_vm_comparison() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        
+        let mut bytecode = ByteCode::new();
+        bytecode.emit(OpCode::PushConst(Value::Int(10)), None);
+        bytecode.emit(OpCode::PushConst(Value::Int(5)), None);
+        bytecode.emit(OpCode::Gt, None);
+        bytecode.emit(OpCode::Halt, None);
+        
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+        
+        match result {
+            Some(Value::Bool(b)) => assert_eq!(b, true),
+            _ => panic!("Expected Bool(true)"),
+        }
+    }
+    
+    #[test]
+    fn test_vm_array() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+        
+        let mut bytecode = ByteCode::new();
+        bytecode.emit(OpCode::PushConst(Value::Int(1)), None);
+        bytecode.emit(OpCode::PushConst(Value::Int(2)), None);
+        bytecode.emit(OpCode::PushConst(Value::Int(3)), None);
+        bytecode.emit(OpCode::MakeArray(3), None);
+        bytecode.emit(OpCode::Halt, None);
+        
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+        
+        match result {
+            Some(Value::Array(arr)) => {
+                let arr_ref = arr.borrow();
+                assert_eq!(arr_ref.len(), 3);
+            }
+            _ => panic!("Expected Array"),
+        }
     }
 }
