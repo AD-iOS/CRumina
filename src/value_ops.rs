@@ -35,6 +35,7 @@ use crate::ast::{BinOp, UnaryOp};
 use crate::value::{IrrationalValue, Value};
 
 /// Compute power operation with symbolic handling
+#[allow(dead_code)]
 fn compute_power(base: f64, exponent: f64) -> Result<Value, String> {
     // Check if exponent is a simple rational (1/n form)
     let denom_approx = (1.0 / exponent).round();
@@ -149,6 +150,7 @@ fn compute_power(base: f64, exponent: f64) -> Result<Value, String> {
 }
 
 /// Multiply two irrational values
+#[allow(dead_code)]
 fn multiply_irrationals(a: &IrrationalValue, b: &IrrationalValue) -> Result<Value, String> {
     // Product simplification (limited)
     match (a, b) {
