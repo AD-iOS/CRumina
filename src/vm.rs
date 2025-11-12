@@ -310,6 +310,32 @@ struct CallFrame {
     locals: HashMap<String, Value>,
 }
 
+/// Inline cache entry for member access
+#[derive(Debug, Clone)]
+struct InlineCache {
+    /// Member name being accessed
+    member: String,
+    /// Cached result for fast path (if object structure matches)
+    /// Currently unused but reserved for future optimization
+    #[allow(dead_code)]
+    cached_value: Option<Value>,
+    /// Cache hits counter
+    hits: usize,
+    /// Cache misses counter
+    misses: usize,
+}
+
+impl InlineCache {
+    fn new(member: String) -> Self {
+        InlineCache {
+            member,
+            cached_value: None,
+            hits: 0,
+            misses: 0,
+        }
+    }
+}
+
 /// Virtual Machine state
 pub struct VM {
     /// Bytecode being executed
@@ -336,6 +362,9 @@ pub struct VM {
     /// Function table: maps function names to their bytecode locations
     functions: HashMap<String, FunctionInfo>,
 
+    /// Inline cache for member access (maps instruction address to cache)
+    member_cache: HashMap<usize, InlineCache>,
+
     /// Halt flag
     halted: bool,
 
@@ -356,6 +385,7 @@ impl VM {
             locals: HashMap::new(),
             loop_stack: Vec::new(),
             functions: HashMap::new(),
+            member_cache: HashMap::new(),
             halted: false,
             recursion_depth: 0,
             max_recursion_depth: 4000,
@@ -584,6 +614,8 @@ impl VM {
             }
 
             OpCode::Member(member_name) => {
+                let cache_addr = self.ip - 1; // Address of this Member instruction
+                
                 let object = self
                     .stack
                     .pop()
@@ -593,8 +625,30 @@ impl VM {
                     Value::Struct(s) => {
                         let s_ref = s.borrow();
                         if let Some(value) = s_ref.get(&member_name) {
+                            // Check if we have a cache entry for this instruction
+                            if let Some(cache) = self.member_cache.get_mut(&cache_addr) {
+                                // Cache exists - increment hits
+                                cache.hits += 1;
+                            } else {
+                                // First access - initialize cache entry
+                                self.member_cache.insert(
+                                    cache_addr,
+                                    InlineCache::new(member_name.clone()),
+                                );
+                            }
+                            
                             self.stack.push(value.clone());
                         } else {
+                            // Member not found - track miss
+                            if let Some(cache) = self.member_cache.get_mut(&cache_addr) {
+                                cache.misses += 1;
+                            } else {
+                                // Initialize cache with miss
+                                let mut cache = InlineCache::new(member_name.clone());
+                                cache.misses = 1;
+                                self.member_cache.insert(cache_addr, cache);
+                            }
+                            
                             return Err(RuminaError::runtime(format!(
                                 "Struct does not have member '{}'",
                                 member_name
@@ -602,6 +656,16 @@ impl VM {
                         }
                     }
                     _ => {
+                        // Non-struct type - track miss
+                        if let Some(cache) = self.member_cache.get_mut(&cache_addr) {
+                            cache.misses += 1;
+                        } else {
+                            // Initialize cache with miss
+                            let mut cache = InlineCache::new(member_name.clone());
+                            cache.misses = 1;
+                            self.member_cache.insert(cache_addr, cache);
+                        }
+                        
                         return Err(RuminaError::runtime(format!(
                             "Cannot access member of type {}",
                             object.type_name()
@@ -973,6 +1037,14 @@ impl VM {
             // Inside a function, use locals
             self.locals.insert(name, value);
         }
+    }
+
+    /// Get inline cache statistics for debugging/profiling
+    #[allow(dead_code)]
+    pub fn get_cache_stats(&self) -> (usize, usize) {
+        let total_hits: usize = self.member_cache.values().map(|c| c.hits).sum();
+        let total_misses: usize = self.member_cache.values().map(|c| c.misses).sum();
+        (total_hits, total_misses)
     }
 }
 
@@ -1347,4 +1419,117 @@ mod tests {
         // Pool should only have 2 constants
         assert_eq!(bytecode.constants.len(), 2);
     }
+
+    #[test]
+    fn test_inline_cache_member_access() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        // Create a struct with a member: { x: 42 }
+        let idx_key = bytecode.add_constant(Value::String("x".to_string()));
+        let idx_val = bytecode.add_constant(Value::Int(42));
+        
+        bytecode.emit(OpCode::PushConstPooled(idx_key), None);
+        bytecode.emit(OpCode::PushConstPooled(idx_val), None);
+        bytecode.emit(OpCode::MakeStruct(1), None);
+        
+        // Store struct in a variable
+        bytecode.emit(OpCode::PopVar("obj".to_string()), None);
+        
+        // Access member - this will create a cache entry at this instruction address
+        bytecode.emit(OpCode::PushVar("obj".to_string()), None);
+        bytecode.emit(OpCode::Member("x".to_string()), None);
+        
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+
+        // Verify result
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 42),
+            _ => panic!("Expected Int(42)"),
+        }
+
+        // Verify cache entry was created (even though this is first access, no "hits" yet)
+        let cache_entries = vm.member_cache.len();
+        assert_eq!(cache_entries, 1, "Should have created one cache entry");
+    }
+
+    #[test]
+    fn test_inline_cache_multiple_members() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        // Create a struct with multiple members: { x: 10, y: 20 }
+        let idx_key_x = bytecode.add_constant(Value::String("x".to_string()));
+        let idx_val_x = bytecode.add_constant(Value::Int(10));
+        let idx_key_y = bytecode.add_constant(Value::String("y".to_string()));
+        let idx_val_y = bytecode.add_constant(Value::Int(20));
+        
+        bytecode.emit(OpCode::PushConstPooled(idx_key_x), None);
+        bytecode.emit(OpCode::PushConstPooled(idx_val_x), None);
+        bytecode.emit(OpCode::PushConstPooled(idx_key_y), None);
+        bytecode.emit(OpCode::PushConstPooled(idx_val_y), None);
+        bytecode.emit(OpCode::MakeStruct(2), None);
+        
+        // Store struct in a variable
+        bytecode.emit(OpCode::PopVar("obj".to_string()), None);
+        
+        // Access first member
+        bytecode.emit(OpCode::PushVar("obj".to_string()), None);
+        bytecode.emit(OpCode::Member("x".to_string()), None);
+        
+        // Access second member
+        bytecode.emit(OpCode::PushVar("obj".to_string()), None);
+        bytecode.emit(OpCode::Member("y".to_string()), None);
+        
+        // Add the results
+        bytecode.emit(OpCode::Add, None);
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+
+        // Verify result: x + y = 30
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 30),
+            _ => panic!("Expected Int(30)"),
+        }
+    }
+
+    #[test]
+    fn test_inline_cache_miss_tracking() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        // Create a struct with one member: { x: 42 }
+        let idx_key = bytecode.add_constant(Value::String("x".to_string()));
+        let idx_val = bytecode.add_constant(Value::Int(42));
+        
+        bytecode.emit(OpCode::PushConstPooled(idx_key), None);
+        bytecode.emit(OpCode::PushConstPooled(idx_val), None);
+        bytecode.emit(OpCode::MakeStruct(1), None);
+        
+        // Try to access non-existent member (will fail)
+        bytecode.emit(OpCode::Member("nonexistent".to_string()), None);
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run();
+
+        // Should fail with error
+        assert!(result.is_err(), "Should error on nonexistent member");
+
+        // Verify cache miss was tracked
+        let (_hits, misses) = vm.get_cache_stats();
+        assert_eq!(misses, 1, "Cache should have recorded exactly one miss");
+    }
 }
+
