@@ -2,6 +2,7 @@
 ///
 /// This module implements a bytecode VM with an x86_64-inspired instruction set.
 /// The VM uses a stack-based execution model with register-like local variables.
+use crate::ast::DeclaredType;
 use crate::error::RuminaError;
 use crate::value::Value;
 use crate::vm_ops::VMOperations;
@@ -534,6 +535,7 @@ impl ByteCode {
                     body_end
                 )
             }
+            OpCode::ConvertType(dtype) => format!("ConvertType({:?})", dtype),
         }
     }
 
@@ -1548,9 +1550,12 @@ impl VM {
             }
 
             OpCode::ConvertType(dtype) => {
-                let val = self.pop()?;
-                let converted = self.convert_to_type(val, dtype)?;
-                self.push(converted);
+                let val = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let converted = self.convert_to_type(val, &dtype)?;
+                self.stack.push(converted);
             }
 
             OpCode::Halt => {
@@ -1588,8 +1593,7 @@ impl VM {
     /// Convert value to specified type
     fn convert_to_type(&self, val: Value, dtype: &DeclaredType) -> Result<Value, RuminaError> {
         use crate::interpreter::convert;
-        convert::convert_to_declared_type(val, dtype)
-            .map_err(|e| RuminaError::runtime(e))
+        convert::convert_to_declared_type(val, dtype).map_err(|e| RuminaError::runtime(e))
     }
 
     /// Get variable from locals or globals
