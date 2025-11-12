@@ -19,7 +19,7 @@ Rumina uses a bytecode Virtual Machine (VM) with an instruction set inspired by 
 - **Instruction Pointer (IP)**: Points to the next instruction to execute
 - **Global Variables**: Shared across all scopes, includes built-in functions
 - **Local Variables**: Scoped to current execution context
-- **Call Stack**: Manages function calls and returns (partial implementation)
+- **Call Stack**: Manages function calls and returns with proper call frames
 - **Decoupled Frontend**: Lexer and Parser produce AST, Compiler produces bytecode, VM executes
 
 ### API
@@ -188,23 +188,25 @@ Built-in functions are integrated through the interpreter's globals:
 
 ### Completed ✅
 - All OpCodes defined and documented
-- Compiler for most AST constructs
-- VM execution engine
-- Stack operations
-- Variable storage (locals and globals)
-- Arithmetic, logical, and comparison operations
-- Control flow (if, while, jumps)
-- Array and struct operations
-- Native function calls
+- Compiler for all implemented AST constructs:
+  - Variable declarations and assignments
+  - Arithmetic, logical, and comparison operations
+  - Control flow (if/else, while loops, break/continue)
+  - User-defined functions with parameters
+  - Recursive function calls with proper call frames
+  - Array and struct operations
+  - Native function calls
+  - Member and index access
+- VM execution engine with stack-based operations
+- Variable storage (locals and globals with proper scoping)
 - Built-in function integration
-- **User-defined function calls with proper call frames**
-- **Recursive function support with depth tracking**
-- Comprehensive test suite (49 tests)
+- Comprehensive test suite (48 unit tests + 2 performance tests)
 
-### In Progress 🔄
-- Lambda/closure support
-- For loop compilation
-- Enhanced scope management
+### Not Yet Implemented ⚠️
+- Lambda/closure compilation (interpreter supports this, VM compiler does not yet)
+- For loop compilation (interpreter supports this, VM compiler does not yet)
+
+**Note**: These features work in the interpreter but need compiler implementation for VM support. The VM will continue to work for all other language features.
 
 ### Future Enhancements 🔮
 - Constant folding optimization
