@@ -141,7 +141,12 @@ impl Compiler {
                 // Keep expression result on stack for potential return value
             }
 
-            Stmt::VarDecl { name, value, is_bigint, declared_type } => {
+            Stmt::VarDecl {
+                name,
+                value,
+                is_bigint,
+                declared_type,
+            } => {
                 // Compile the value expression
                 self.compile_expr(value)?;
 

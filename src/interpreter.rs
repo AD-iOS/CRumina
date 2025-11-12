@@ -308,7 +308,11 @@ mod tests {
             Value::BigInt(n) => {
                 // Verify it's a very large number (has more than 100 digits)
                 let str_repr = n.to_string();
-                assert!(str_repr.len() > 100, "Expected very large number, got {} digits", str_repr.len());
+                assert!(
+                    str_repr.len() > 100,
+                    "Expected very large number, got {} digits",
+                    str_repr.len()
+                );
             }
             other => panic!("Expected BigInt result for large power, got {:?}", other),
         }
