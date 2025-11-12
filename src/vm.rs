@@ -116,6 +116,24 @@ pub enum OpCode {
     /// Similar to: CMP + SETLE
     Lte,
 
+    /// Specialized less than for known integer types (hot path optimization)
+    LtInt,
+
+    /// Specialized less than or equal for known integer types (hot path optimization)
+    LteInt,
+
+    /// Specialized greater than for known integer types (hot path optimization)
+    GtInt,
+
+    /// Specialized greater than or equal for known integer types (hot path optimization)
+    GteInt,
+
+    /// Specialized equal for known integer types (hot path optimization)
+    EqInt,
+
+    /// Specialized not equal for known integer types (hot path optimization)
+    NeqInt,
+
     // ===== Control Flow Instructions (JMP, CALL, RET family) =====
     /// Unconditional jump to address
     /// Similar to: JMP addr
@@ -487,6 +505,12 @@ impl ByteCode {
             OpCode::Gte => "Gte".to_string(),
             OpCode::Lt => "Lt".to_string(),
             OpCode::Lte => "Lte".to_string(),
+            OpCode::LtInt => "LtInt".to_string(),
+            OpCode::LteInt => "LteInt".to_string(),
+            OpCode::GtInt => "GtInt".to_string(),
+            OpCode::GteInt => "GteInt".to_string(),
+            OpCode::EqInt => "EqInt".to_string(),
+            OpCode::NeqInt => "NeqInt".to_string(),
             OpCode::Jump(addr) => format!("Jump({})", addr),
             OpCode::JumpIfFalse(addr) => format!("JumpIfFalse({})", addr),
             OpCode::JumpIfTrue(addr) => format!("JumpIfTrue({})", addr),
@@ -605,6 +629,24 @@ impl ByteCode {
         }
         if s == "Lte" {
             return Ok(OpCode::Lte);
+        }
+        if s == "LtInt" {
+            return Ok(OpCode::LtInt);
+        }
+        if s == "LteInt" {
+            return Ok(OpCode::LteInt);
+        }
+        if s == "GtInt" {
+            return Ok(OpCode::GtInt);
+        }
+        if s == "GteInt" {
+            return Ok(OpCode::GteInt);
+        }
+        if s == "EqInt" {
+            return Ok(OpCode::EqInt);
+        }
+        if s == "NeqInt" {
+            return Ok(OpCode::NeqInt);
         }
         if s == "Return" {
             return Ok(OpCode::Return);
@@ -1065,6 +1107,128 @@ impl VM {
             OpCode::Gte => self.binary_op(|a, b| a.vm_gte(b))?,
             OpCode::Lt => self.binary_op(|a, b| a.vm_lt(b))?,
             OpCode::Lte => self.binary_op(|a, b| a.vm_lte(b))?,
+
+            // Specialized integer comparisons
+            OpCode::LtInt => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Bool(a < b));
+                    }
+                    _ => {
+                        let result = left.vm_lt(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
+            OpCode::LteInt => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Bool(a <= b));
+                    }
+                    _ => {
+                        let result = left.vm_lte(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
+            OpCode::GtInt => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Bool(a > b));
+                    }
+                    _ => {
+                        let result = left.vm_gt(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
+            OpCode::GteInt => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Bool(a >= b));
+                    }
+                    _ => {
+                        let result = left.vm_gte(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
+            OpCode::EqInt => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Bool(a == b));
+                    }
+                    _ => {
+                        let result = left.vm_eq(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
+            OpCode::NeqInt => {
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Bool(a != b));
+                    }
+                    _ => {
+                        let result = left.vm_neq(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
 
             // Logical operations
             OpCode::And => self.binary_op(|a, b| a.vm_and(b))?,
