@@ -42,13 +42,23 @@ pub enum OpCode {
     /// Similar to: ADD rax, rbx
     Add,
 
+    /// Specialized add for known integer types (hot path optimization)
+    /// Similar to: ADD rax, rbx (with type check)
+    AddInt,
+
     /// Subtract top two stack values (TOS-1 - TOS)
     /// Similar to: SUB rax, rbx
     Sub,
 
+    /// Specialized subtract for known integer types (hot path optimization)
+    SubInt,
+
     /// Multiply top two stack values
     /// Similar to: MUL rbx
     Mul,
+
+    /// Specialized multiply for known integer types (hot path optimization)
+    MulInt,
 
     /// Divide top two stack values (TOS-1 / TOS)
     /// Similar to: DIV rbx
@@ -460,8 +470,74 @@ impl VM {
             }
 
             OpCode::Add => self.binary_op(|a, b| a.vm_add(b))?,
+            OpCode::AddInt => {
+                // Fast path for integer addition
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Int(a + b));
+                    }
+                    _ => {
+                        // Fallback to generic add
+                        let result = left.vm_add(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
             OpCode::Sub => self.binary_op(|a, b| a.vm_sub(b))?,
+            OpCode::SubInt => {
+                // Fast path for integer subtraction
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Int(a - b));
+                    }
+                    _ => {
+                        // Fallback to generic sub
+                        let result = left.vm_sub(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
             OpCode::Mul => self.binary_op(|a, b| a.vm_mul(b))?,
+            OpCode::MulInt => {
+                // Fast path for integer multiplication
+                let right = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+                let left = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime("Stack underflow".to_string()))?;
+
+                match (&left, &right) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        self.stack.push(Value::Int(a * b));
+                    }
+                    _ => {
+                        // Fallback to generic mul
+                        let result = left.vm_mul(&right).map_err(|e| RuminaError::runtime(e))?;
+                        self.stack.push(result);
+                    }
+                }
+            }
             OpCode::Div => self.binary_op(|a, b| a.vm_div(b))?,
             OpCode::Mod => self.binary_op(|a, b| a.vm_mod(b))?,
             OpCode::Pow => self.binary_op(|a, b| a.vm_pow(b))?,
@@ -1531,5 +1607,106 @@ mod tests {
         let (_hits, misses) = vm.get_cache_stats();
         assert_eq!(misses, 1, "Cache should have recorded exactly one miss");
     }
+
+    #[test]
+    fn test_specialized_int_add() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        // Add constants to pool
+        let idx1 = bytecode.add_constant(Value::Int(15));
+        let idx2 = bytecode.add_constant(Value::Int(27));
+        
+        // Use specialized integer add
+        bytecode.emit(OpCode::PushConstPooled(idx1), None);
+        bytecode.emit(OpCode::PushConstPooled(idx2), None);
+        bytecode.emit(OpCode::AddInt, None);
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 42),
+            _ => panic!("Expected Int(42)"),
+        }
+    }
+
+    #[test]
+    fn test_specialized_int_sub() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        let idx1 = bytecode.add_constant(Value::Int(100));
+        let idx2 = bytecode.add_constant(Value::Int(42));
+        
+        bytecode.emit(OpCode::PushConstPooled(idx1), None);
+        bytecode.emit(OpCode::PushConstPooled(idx2), None);
+        bytecode.emit(OpCode::SubInt, None);
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 58),
+            _ => panic!("Expected Int(58)"),
+        }
+    }
+
+    #[test]
+    fn test_specialized_int_mul() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        let idx1 = bytecode.add_constant(Value::Int(6));
+        let idx2 = bytecode.add_constant(Value::Int(7));
+        
+        bytecode.emit(OpCode::PushConstPooled(idx1), None);
+        bytecode.emit(OpCode::PushConstPooled(idx2), None);
+        bytecode.emit(OpCode::MulInt, None);
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+
+        match result {
+            Some(Value::Int(n)) => assert_eq!(n, 42),
+            _ => panic!("Expected Int(42)"),
+        }
+    }
+
+    #[test]
+    fn test_specialized_int_fallback_to_generic() {
+        let globals = Rc::new(RefCell::new(HashMap::new()));
+        let mut vm = VM::new(globals);
+
+        let mut bytecode = ByteCode::new();
+        
+        // Mix int and float - should fallback to generic add
+        let idx1 = bytecode.add_constant(Value::Int(10));
+        let idx2 = bytecode.add_constant(Value::Float(3.14));
+        
+        bytecode.emit(OpCode::PushConstPooled(idx1), None);
+        bytecode.emit(OpCode::PushConstPooled(idx2), None);
+        bytecode.emit(OpCode::AddInt, None);
+        bytecode.emit(OpCode::Halt, None);
+
+        vm.load(bytecode);
+        let result = vm.run().unwrap();
+
+        // Result should be a float
+        match result {
+            Some(Value::Float(f)) => assert!((f - 13.14).abs() < 0.01),
+            _ => panic!("Expected Float(13.14)"),
+        }
+    }
 }
+
 
