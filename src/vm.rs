@@ -1499,7 +1499,9 @@ impl VM {
                             self.recursion_depth += 1;
 
                             // Set up parameters as local variables
+                            // Reserve capacity to avoid reallocations
                             self.locals.clear();
+                            self.locals.reserve(params.len());
                             for (param_name, arg_value) in params.iter().zip(args.into_iter()) {
                                 self.locals.insert(param_name.clone(), arg_value);
                             }
