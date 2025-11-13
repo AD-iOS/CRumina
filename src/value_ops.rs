@@ -45,7 +45,7 @@ use crate::value::{IrrationalValue, Value};
 const PARALLEL_POW_THRESHOLD: u32 = 10000;
 
 /// Compute BigInt power operation with optional parallelization for large exponents
-/// 
+///
 /// For exponents >= PARALLEL_POW_THRESHOLD, uses parallel divide-and-conquer
 /// to improve CPU utilization on multi-core systems.
 fn bigint_pow_optimized(base: &BigInt, exponent: u32) -> BigInt {
@@ -67,16 +67,16 @@ fn bigint_pow_parallel(base: &BigInt, exponent: u32) -> BigInt {
     if exponent == 1 {
         return base.clone();
     }
-    
+
     // Use sequential for small exponents
     if exponent < 500 {
         return base.pow(exponent);
     }
-    
+
     // For large exponents, split into chunks that can be computed independently
     // then multiplied together. This allows parallel computation.
     // Strategy: base^exp = base^(chunk_size) * base^(chunk_size) * ... * base^(remainder)
-    
+
     // Choose chunk size based on exponent to create parallelizable work
     let num_chunks = if exponent >= 100000 {
         8 // More chunks for very large exponents
@@ -85,33 +85,33 @@ fn bigint_pow_parallel(base: &BigInt, exponent: u32) -> BigInt {
     } else {
         2
     };
-    
+
     let chunk_size = exponent / num_chunks;
     let remainder = exponent % num_chunks;
-    
+
     if chunk_size < 100 {
         // Chunks too small, just use sequential
         return base.pow(exponent);
     }
-    
+
     // Compute all chunks in parallel
     let chunk_results: Vec<BigInt> = (0..num_chunks)
         .into_par_iter()
         .map(|_| bigint_pow_parallel(base, chunk_size))
         .collect();
-    
+
     // Multiply all chunk results together
     let mut result = BigInt::from(1);
     for chunk_result in chunk_results {
         result = result * chunk_result;
     }
-    
+
     // Handle remainder
     if remainder > 0 {
         let remainder_result = base.pow(remainder);
         result = result * remainder_result;
     }
-    
+
     result
 }
 
