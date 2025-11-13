@@ -10,6 +10,24 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+/// Function definition information (boxed in OpCode to reduce size)
+#[derive(Debug, Clone, PartialEq)]
+pub struct FuncDefInfo {
+    pub name: String,
+    pub params: Vec<String>,
+    pub body_start: usize,
+    pub body_end: usize,
+    pub decorators: Vec<String>,
+}
+
+/// Lambda information (boxed in OpCode to reduce size)
+#[derive(Debug, Clone, PartialEq)]
+pub struct LambdaInfo {
+    pub params: Vec<String>,
+    pub body_start: usize,
+    pub body_end: usize,
+}
+
 /// VM Instruction Set (x86_64-inspired CISC design)
 #[derive(Debug, Clone, PartialEq)]
 pub enum OpCode {
@@ -182,21 +200,11 @@ pub enum OpCode {
     MemberAssign(String),
 
     // ===== Function Definition Instructions =====
-    /// Define a function
-    DefineFunc {
-        name: String,
-        params: Vec<String>,
-        body_start: usize,
-        body_end: usize,
-        decorators: Vec<String>,
-    },
+    /// Define a function (boxed to reduce OpCode size)
+    DefineFunc(Box<FuncDefInfo>),
 
-    /// Create lambda/closure
-    MakeLambda {
-        params: Vec<String>,
-        body_start: usize,
-        body_end: usize,
-    },
+    /// Create lambda/closure (boxed to reduce OpCode size)
+    MakeLambda(Box<LambdaInfo>),
 
     // ===== Scope Management =====
     /// Enter new local scope
@@ -531,32 +539,22 @@ impl ByteCode {
             OpCode::Continue => "Continue".to_string(),
             OpCode::Nop => "Nop".to_string(),
             OpCode::Halt => "Halt".to_string(),
-            OpCode::DefineFunc {
-                name,
-                params,
-                body_start,
-                body_end,
-                decorators,
-            } => {
+            OpCode::DefineFunc(info) => {
                 format!(
                     "DefineFunc({}, [{}], {}, {}, [{}])",
-                    name,
-                    params.join(","),
-                    body_start,
-                    body_end,
-                    decorators.join(",")
+                    info.name,
+                    info.params.join(","),
+                    info.body_start,
+                    info.body_end,
+                    info.decorators.join(",")
                 )
             }
-            OpCode::MakeLambda {
-                params,
-                body_start,
-                body_end,
-            } => {
+            OpCode::MakeLambda(info) => {
                 format!(
                     "MakeLambda([{}], {}, {})",
-                    params.join(","),
-                    body_start,
-                    body_end
+                    info.params.join(","),
+                    info.body_start,
+                    info.body_end
                 )
             }
             OpCode::ConvertType(dtype) => format!("ConvertType({:?})", dtype),
@@ -781,13 +779,13 @@ impl ByteCode {
                 } else {
                     vec![]
                 };
-                return Ok(OpCode::DefineFunc {
+                return Ok(OpCode::DefineFunc(Box::new(FuncDefInfo {
                     name,
                     params,
                     body_start,
                     body_end,
                     decorators,
-                });
+                })));
             }
         }
         if let Some(args) = s
@@ -805,11 +803,11 @@ impl ByteCode {
                 };
                 let body_start = parts[1].parse().map_err(|_| "Invalid body_start")?;
                 let body_end = parts[2].parse().map_err(|_| "Invalid body_end")?;
-                return Ok(OpCode::MakeLambda {
+                return Ok(OpCode::MakeLambda(Box::new(LambdaInfo {
                     params,
                     body_start,
                     body_end,
-                });
+                })));
             }
         }
         if let Some(dtype_str) = s
@@ -1472,40 +1470,34 @@ impl VM {
                 // Mark loop end - will be set by compiler
             }
 
-            OpCode::DefineFunc {
-                name,
-                params,
-                body_start,
-                body_end,
-                decorators,
-            } => {
+            OpCode::DefineFunc(info) => {
                 // Store function metadata in function table
                 self.functions.insert(
-                    name.clone(),
+                    info.name.clone(),
                     FunctionInfo {
-                        name: name.clone(),
-                        params: params.clone(),
-                        body_start,
-                        body_end,
+                        name: info.name.clone(),
+                        params: info.params.clone(),
+                        body_start: info.body_start,
+                        body_end: info.body_end,
                     },
                 );
 
                 // Store function in globals as well (for compatibility)
                 let func_value = Value::Function {
-                    name: name.clone(),
-                    params: params.clone(),
+                    name: info.name.clone(),
+                    params: info.params.clone(),
                     body: Box::new(crate::ast::Stmt::Block(vec![])), // Placeholder
-                    decorators: decorators.clone(),
+                    decorators: info.decorators.clone(),
                 };
-                self.globals.borrow_mut().insert(name, func_value);
+                self.globals.borrow_mut().insert(info.name.clone(), func_value);
             }
 
             OpCode::CallVar(func_name, arg_count) => {
                 // Get the function
                 let func = self.get_variable(&func_name)?;
 
-                // Pop arguments from stack
-                let mut args = Vec::new();
+                // Pop arguments from stack (pre-allocate to avoid reallocation)
+                let mut args = Vec::with_capacity(arg_count);
                 for _ in 0..arg_count {
                     let arg = self
                         .stack
@@ -1684,11 +1676,7 @@ impl VM {
                     .push(Value::Struct(Rc::new(RefCell::new(fields))));
             }
 
-            OpCode::MakeLambda {
-                params,
-                body_start: _,
-                body_end: _,
-            } => {
+            OpCode::MakeLambda(info) => {
                 // Pop the lambda_id from the stack
                 let lambda_id_value = self
                     .stack
@@ -1718,7 +1706,7 @@ impl VM {
                 let marker_body = Box::new(crate::ast::Stmt::Include(lambda_id.clone()));
 
                 let lambda_value = Value::Lambda {
-                    params: params.clone(),
+                    params: info.params.clone(),
                     body: marker_body,
                     closure,
                 };
@@ -2004,13 +1992,13 @@ mod tests {
 
         // Define the function
         bytecode.emit(
-            OpCode::DefineFunc {
+            OpCode::DefineFunc(Box::new(FuncDefInfo {
                 name: "add".to_string(),
                 params: vec!["a".to_string(), "b".to_string()],
                 body_start,
                 body_end,
                 decorators: vec![],
-            },
+            })),
             None,
         );
 
@@ -2086,13 +2074,13 @@ mod tests {
 
         // Define the function
         bytecode.emit(
-            OpCode::DefineFunc {
+            OpCode::DefineFunc(Box::new(FuncDefInfo {
                 name: "fib".to_string(),
                 params: vec!["n".to_string()],
                 body_start,
                 body_end,
                 decorators: vec![],
-            },
+            })),
             None,
         );
 
