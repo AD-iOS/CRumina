@@ -189,7 +189,7 @@ pub struct ByteCode {
 
     /// Constants pool (for optimization)
     pub constants: Vec<Value>,
-    
+
     /// Cache for frequently used constants to speed up lookup
     /// Maps common values to their indices
     common_constants_cache: FxHashMap<CommonConstant, usize>,
@@ -246,13 +246,13 @@ impl ByteCode {
             Value::String(s) => Some(CommonConstant::String(s.clone())),
             _ => None,
         };
-        
+
         if let Some(key) = cache_key {
             if let Some(&index) = self.common_constants_cache.get(&key) {
                 return index;
             }
         }
-        
+
         // Slow path: Linear search for complex types or cache miss
         for (i, existing) in self.constants.iter().enumerate() {
             if Self::values_equal(existing, &value) {
@@ -273,7 +273,7 @@ impl ByteCode {
         // Add new constant
         let index = self.constants.len();
         self.constants.push(value.clone());
-        
+
         // Cache common constants for fast future lookups
         if let Some(key) = match &value {
             Value::Int(i) => Some(CommonConstant::Int(*i)),
@@ -284,7 +284,7 @@ impl ByteCode {
         } {
             self.common_constants_cache.insert(key, index);
         }
-        
+
         index
     }
 
