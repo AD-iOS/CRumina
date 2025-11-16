@@ -120,9 +120,7 @@ impl BytecodeOptimizer {
                 (
                     OpCode::PushConstPooled(idx1),
                     OpCode::PushConstPooled(idx2),
-                    OpCode::Add
-                    | OpCode::Sub
-                    | OpCode::Mul,
+                    OpCode::Add | OpCode::Sub | OpCode::Mul,
                 ) => {
                     // Check if both constants are integers
                     if let (Some(val1), Some(val2)) =
