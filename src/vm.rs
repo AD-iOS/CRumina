@@ -13,7 +13,14 @@ use std::rc::Rc;
 
 // Const error messages to avoid allocations
 const ERR_STACK_UNDERFLOW: &str = "Stack underflow";
-const _ERR_INVALID_CONST_INDEX: &str = "Invalid constant pool index";
+const ERR_INVALID_CONST_INDEX: &str = "Invalid constant pool index";
+const ERR_ARRAY_INDEX_MUST_BE_INT: &str = "Array index must be an integer";
+const ERR_STRING_INDEX_MUST_BE_INT: &str = "String index must be an integer";
+const _ERR_CANNOT_INDEX_TYPE: &str = "Cannot index type";
+const _ERR_CANNOT_CALL_TYPE: &str = "Cannot call type";
+const ERR_BREAK_OUTSIDE_LOOP: &str = "Break outside of loop";
+const ERR_CONTINUE_OUTSIDE_LOOP: &str = "Continue outside of loop";
+const ERR_LAMBDA_ID_NOT_FOUND: &str = "Lambda ID not found";
 
 /// Function definition information (boxed in OpCode to reduce size)
 #[derive(Debug, Clone, PartialEq)]
@@ -495,41 +502,41 @@ impl ByteCode {
             OpCode::PushConstPooled(i) => format!("PushConstPooled({})", i),
             OpCode::PushVar(name) => format!("PushVar({})", name),
             OpCode::PopVar(name) => format!("PopVar({})", name),
-            OpCode::Dup => "Dup".to_string(),
-            OpCode::Pop => "Pop".to_string(),
-            OpCode::Add => "Add".to_string(),
-            OpCode::Sub => "Sub".to_string(),
-            OpCode::Mul => "Mul".to_string(),
-            OpCode::Div => "Div".to_string(),
-            OpCode::Mod => "Mod".to_string(),
-            OpCode::Pow => "Pow".to_string(),
-            OpCode::Neg => "Neg".to_string(),
-            OpCode::Factorial => "Factorial".to_string(),
-            OpCode::Not => "Not".to_string(),
-            OpCode::And => "And".to_string(),
-            OpCode::Or => "Or".to_string(),
-            OpCode::Eq => "Eq".to_string(),
-            OpCode::Neq => "Neq".to_string(),
-            OpCode::Gt => "Gt".to_string(),
-            OpCode::Gte => "Gte".to_string(),
-            OpCode::Lt => "Lt".to_string(),
-            OpCode::Lte => "Lte".to_string(),
+            OpCode::Dup => "Dup".into(),
+            OpCode::Pop => "Pop".into(),
+            OpCode::Add => "Add".into(),
+            OpCode::Sub => "Sub".into(),
+            OpCode::Mul => "Mul".into(),
+            OpCode::Div => "Div".into(),
+            OpCode::Mod => "Mod".into(),
+            OpCode::Pow => "Pow".into(),
+            OpCode::Neg => "Neg".into(),
+            OpCode::Factorial => "Factorial".into(),
+            OpCode::Not => "Not".into(),
+            OpCode::And => "And".into(),
+            OpCode::Or => "Or".into(),
+            OpCode::Eq => "Eq".into(),
+            OpCode::Neq => "Neq".into(),
+            OpCode::Gt => "Gt".into(),
+            OpCode::Gte => "Gte".into(),
+            OpCode::Lt => "Lt".into(),
+            OpCode::Lte => "Lte".into(),
             OpCode::Jump(addr) => format!("Jump({})", addr),
             OpCode::JumpIfFalse(addr) => format!("JumpIfFalse({})", addr),
             OpCode::JumpIfTrue(addr) => format!("JumpIfTrue({})", addr),
             OpCode::CallVar(name, argc) => format!("CallVar({}, {})", name, argc),
             OpCode::Call(argc) => format!("Call({})", argc),
             OpCode::CallMethod(argc) => format!("CallMethod({})", argc),
-            OpCode::Return => "Return".to_string(),
+            OpCode::Return => "Return".into(),
             OpCode::MakeArray(size) => format!("MakeArray({})", size),
             OpCode::MakeStruct(size) => format!("MakeStruct({})", size),
-            OpCode::Index => "Index".to_string(),
+            OpCode::Index => "Index".into(),
             OpCode::Member(name) => format!("Member({})", name),
-            OpCode::IndexAssign => "IndexAssign".to_string(),
+            OpCode::IndexAssign => "IndexAssign".into(),
             OpCode::MemberAssign(name) => format!("MemberAssign({})", name),
-            OpCode::Break => "Break".to_string(),
-            OpCode::Continue => "Continue".to_string(),
-            OpCode::Halt => "Halt".to_string(),
+            OpCode::Break => "Break".into(),
+            OpCode::Continue => "Continue".into(),
+            OpCode::Halt => "Halt".into(),
             OpCode::DefineFunc(info) => {
                 format!(
                     "DefineFunc({}, [{}], {}, {}, [{}])",
@@ -958,7 +965,7 @@ impl VM {
                 let value = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 self.set_variable(name.clone(), value);
             }
 
@@ -966,7 +973,7 @@ impl VM {
                 let value = self
                     .stack
                     .last()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?
                     .clone();
                 self.stack.push(value);
             }
@@ -974,7 +981,7 @@ impl VM {
             OpCode::Pop => {
                 self.stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
             }
 
             OpCode::Add => self.binary_op(|a, b| a.vm_add(b))?,
@@ -988,7 +995,7 @@ impl VM {
                 let value = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 let result = value.vm_neg().map_err(|e| RuminaError::runtime(e))?;
                 self.stack.push(result);
             }
@@ -997,7 +1004,7 @@ impl VM {
                 let value = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 let result = value.vm_not().map_err(|e| RuminaError::runtime(e))?;
                 self.stack.push(result);
             }
@@ -1006,7 +1013,7 @@ impl VM {
                 let value = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 let result = value.vm_factorial().map_err(|e| RuminaError::runtime(e))?;
                 self.stack.push(result);
             }
@@ -1032,7 +1039,7 @@ impl VM {
                 let condition = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 if !condition.is_truthy() {
                     self.ip = *addr;
                 }
@@ -1042,7 +1049,7 @@ impl VM {
                 let condition = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 if condition.is_truthy() {
                     self.ip = *addr;
                 }
@@ -1055,7 +1062,7 @@ impl VM {
                     let elem = self
                         .stack
                         .pop()
-                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                     elements.push(elem);
                 }
                 elements.reverse(); // Restore original order
@@ -1067,11 +1074,11 @@ impl VM {
                 let index = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 let array = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 match &array {
                     Value::Array(arr) => {
@@ -1093,9 +1100,7 @@ impl VM {
                                 )));
                             }
                         } else {
-                            return Err(RuminaError::runtime(
-                                "Array index must be an integer".to_string(),
-                            ));
+                            return Err(RuminaError::runtime(ERR_ARRAY_INDEX_MUST_BE_INT));
                         }
                     }
                     Value::String(s) => {
@@ -1117,9 +1122,7 @@ impl VM {
                                 )));
                             }
                         } else {
-                            return Err(RuminaError::runtime(
-                                "String index must be an integer".to_string(),
-                            ));
+                            return Err(RuminaError::runtime(ERR_STRING_INDEX_MUST_BE_INT));
                         }
                     }
                     _ => {
@@ -1137,7 +1140,7 @@ impl VM {
                 let object = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 match &object {
                     Value::Struct(s) => {
@@ -1212,7 +1215,7 @@ impl VM {
                 if let Some((_, break_target)) = self.loop_stack.last() {
                     self.ip = *break_target;
                 } else {
-                    return Err(RuminaError::runtime("Break outside of loop".to_string()));
+                    return Err(RuminaError::runtime(ERR_BREAK_OUTSIDE_LOOP));
                 }
             }
 
@@ -1220,7 +1223,7 @@ impl VM {
                 if let Some((continue_target, _)) = self.loop_stack.last() {
                     self.ip = *continue_target;
                 } else {
-                    return Err(RuminaError::runtime("Continue outside of loop".to_string()));
+                    return Err(RuminaError::runtime(ERR_CONTINUE_OUTSIDE_LOOP));
                 }
             }
 
@@ -1258,7 +1261,7 @@ impl VM {
                     let arg = self
                         .stack
                         .pop()
-                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                     args.push(arg);
                 }
                 args.reverse(); // Restore original order
@@ -1363,7 +1366,7 @@ impl VM {
                                     }
                                 }
                                 found_id.ok_or_else(|| {
-                                    RuminaError::runtime("Lambda ID not found".to_string())
+                                    RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND)
                                 })?
                             }
                         };
@@ -1419,7 +1422,7 @@ impl VM {
                     let arg = self
                         .stack
                         .pop()
-                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                     args.push(arg);
                 }
                 args.reverse(); // Restore original order
@@ -1428,7 +1431,7 @@ impl VM {
                 let func = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 // Call the function
                 match func {
@@ -1528,7 +1531,7 @@ impl VM {
                                     }
                                 }
                                 found_id.ok_or_else(|| {
-                                    RuminaError::runtime("Lambda ID not found".to_string())
+                                    RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND)
                                 })?
                             }
                         };
@@ -1584,7 +1587,7 @@ impl VM {
                     let arg = self
                         .stack
                         .pop()
-                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                     args.push(arg);
                 }
                 args.reverse(); // Restore original order
@@ -1593,13 +1596,13 @@ impl VM {
                 let method = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 // Pop the object from the stack
                 let object = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 // Call the method with self injection
                 match method {
@@ -1639,7 +1642,7 @@ impl VM {
                                     }
                                 }
                                 found_id.ok_or_else(|| {
-                                    RuminaError::runtime("Lambda ID not found".to_string())
+                                    RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND)
                                 })?
                             }
                         };
@@ -1754,12 +1757,12 @@ impl VM {
                     let value = self
                         .stack
                         .pop()
-                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                     // Pop key (should be a string)
                     let key = self
                         .stack
                         .pop()
-                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                        .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                     if let Value::String(key_str) = key {
                         fields.insert(key_str, value);
@@ -1778,7 +1781,7 @@ impl VM {
                 let lambda_id_value = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 let lambda_id = match lambda_id_value {
                     Value::String(id) => id,
@@ -1823,13 +1826,13 @@ impl VM {
                 let value = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 // Pop object
                 let object = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 match object {
                     Value::Struct(s) => {
@@ -1853,7 +1856,7 @@ impl VM {
                 let val = self
                     .stack
                     .pop()
-                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
                 let converted = self.convert_to_type(val, &dtype)?;
                 self.stack.push(converted);
             }
@@ -1874,11 +1877,11 @@ impl VM {
         let right = self
             .stack
             .pop()
-            .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+            .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
         let left = self
             .stack
             .pop()
-            .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW.to_string()))?;
+            .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
         let result = f(&left, &right).map_err(|e| RuminaError::runtime(e))?;
 
