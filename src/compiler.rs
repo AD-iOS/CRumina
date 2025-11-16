@@ -163,7 +163,6 @@ impl Compiler {
         self.bytecode.patch_jump(address, target);
     }
 
-
     /// Compile a statement
     fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(), RuminaError> {
         match stmt {

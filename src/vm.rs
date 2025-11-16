@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 // Const error messages to avoid allocations
 const ERR_STACK_UNDERFLOW: &str = "Stack underflow";
-const ERR_INVALID_CONST_INDEX: &str = "Invalid constant pool index";
+const _ERR_INVALID_CONST_INDEX: &str = "Invalid constant pool index";
 const ERR_ARRAY_INDEX_MUST_BE_INT: &str = "Array index must be an integer";
 const ERR_STRING_INDEX_MUST_BE_INT: &str = "String index must be an integer";
 const _ERR_CANNOT_INDEX_TYPE: &str = "Cannot index type";
@@ -686,8 +686,13 @@ impl ByteCode {
         if let Some(argc) = s.strip_prefix("Call(").and_then(|s| s.strip_suffix(")")) {
             return Ok(OpCode::Call(argc.parse().map_err(|_| "Invalid arg count")?));
         }
-        if let Some(argc) = s.strip_prefix("CallMethod(").and_then(|s| s.strip_suffix(")")) {
-            return Ok(OpCode::CallMethod(argc.parse().map_err(|_| "Invalid arg count")?));
+        if let Some(argc) = s
+            .strip_prefix("CallMethod(")
+            .and_then(|s| s.strip_suffix(")"))
+        {
+            return Ok(OpCode::CallMethod(
+                argc.parse().map_err(|_| "Invalid arg count")?,
+            ));
         }
         if let Some(size) = s
             .strip_prefix("MakeArray(")
@@ -1368,9 +1373,8 @@ impl VM {
                                         break;
                                     }
                                 }
-                                found_id.ok_or_else(|| {
-                                    RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND)
-                                })?
+                                found_id
+                                    .ok_or_else(|| RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND))?
                             }
                         };
 
@@ -1399,10 +1403,8 @@ impl VM {
                         // Start with the closure environment with pre-allocated capacity
                         let closure_ref = closure.borrow();
                         let total_capacity = closure_ref.len() + params.len();
-                        let mut new_locals = FxHashMap::with_capacity_and_hasher(
-                            total_capacity,
-                            Default::default(),
-                        );
+                        let mut new_locals =
+                            FxHashMap::with_capacity_and_hasher(total_capacity, Default::default());
                         for (k, v) in closure_ref.iter() {
                             new_locals.insert(k.clone(), v.clone());
                         }
@@ -1543,9 +1545,8 @@ impl VM {
                                         break;
                                     }
                                 }
-                                found_id.ok_or_else(|| {
-                                    RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND)
-                                })?
+                                found_id
+                                    .ok_or_else(|| RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND))?
                             }
                         };
 
@@ -1654,9 +1655,8 @@ impl VM {
                                         break;
                                     }
                                 }
-                                found_id.ok_or_else(|| {
-                                    RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND)
-                                })?
+                                found_id
+                                    .ok_or_else(|| RuminaError::runtime(ERR_LAMBDA_ID_NOT_FOUND))?
                             }
                         };
 
