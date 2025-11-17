@@ -210,8 +210,9 @@ jobs:
           mkdir -p dist
           # Copy rumina-cli (main program)
           cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
-          # Copy ruminac (compiler)
-          if [ "${{ runner.os }}" = "Windows" ]; then
+          # Copy ruminac (compiler) and rmvm (VM)
+          # Check if target is Windows (either native or cross-compiled)
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             cp target/${{ matrix.target }}/release/ruminac.exe dist/ruminac-${{ matrix.target }}.exe
             cp target/${{ matrix.target }}/release/rmvm.exe dist/rmvm-${{ matrix.target }}.exe
           else
