@@ -27,12 +27,12 @@ jobs:
             artifact_name: rumina-cli.exe
             asset_name: rumina-cli-windows-x86.exe
 
-          # Tier 1: Windows MinGW
-          - os: windows-latest
+          # Tier 1: Windows MinGW (cross-compiled from Linux)
+          - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
             artifact_name: rumina-cli.exe
             asset_name: rumina-cli-windows-x64-gnu.exe
-          - os: windows-latest
+          - os: ubuntu-latest
             target: i686-pc-windows-gnu
             artifact_name: rumina-cli.exe
             asset_name: rumina-cli-windows-x86-gnu.exe
@@ -81,12 +81,6 @@ jobs:
             artifact_name: rumina-cli
             asset_name: rumina-cli-linux-arm64-musl
 
-          # Tier 2: Linux ARM64 (OpenHarmony)
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-ohos
-            artifact_name: rumina-cli
-            asset_name: rumina-cli-linux-arm64-ohos
-
           # Tier 2: Linux ARM (glibc)
           - os: ubuntu-latest
             target: arm-unknown-linux-gnueabi
@@ -100,12 +94,6 @@ jobs:
             target: armv7-unknown-linux-gnueabihf
             artifact_name: rumina-cli
             asset_name: rumina-cli-linux-armv7-gnueabihf
-
-          # Tier 2: Linux ARMv7 (OpenHarmony)
-          - os: ubuntu-latest
-            target: armv7-unknown-linux-ohos
-            artifact_name: rumina-cli
-            asset_name: rumina-cli-linux-armv7-ohos
 
           # Tier 2: Linux RISC-V (glibc)
           - os: ubuntu-latest
@@ -145,12 +133,6 @@ jobs:
             artifact_name: rumina-cli
             asset_name: rumina-cli-linux-powerpc64le-gnu
 
-          # Tier 2: Linux PowerPC64LE (musl)
-          - os: ubuntu-latest
-            target: powerpc64le-unknown-linux-musl
-            artifact_name: rumina-cli
-            asset_name: rumina-cli-linux-powerpc64le-musl
-
           # Tier 2: Linux S390x (glibc)
           - os: ubuntu-latest
             target: s390x-unknown-linux-gnu
@@ -174,12 +156,6 @@ jobs:
             target: x86_64-unknown-netbsd
             artifact_name: rumina-cli
             asset_name: rumina-cli-netbsd-x64
-
-          # Tier 2: Linux x86_64 (OpenHarmony)
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-ohos
-            artifact_name: rumina-cli
-            asset_name: rumina-cli-linux-x64-ohos
 
     steps:
       - name: Checkout code
