@@ -1,5 +1,5 @@
 // 数学函数模块
-use crate::value::{IrrationalValue, Value};
+use crate::value::{irrational_to_float, IrrationalValue, Value};
 use mathcore::MathCore;
 use num::BigInt;
 use num::{One, Zero};
@@ -52,6 +52,20 @@ pub fn sqrt(args: &[Value]) -> Result<Value, String> {
                 ))
             } else {
                 Ok(Value::Float(f.sqrt()))
+            }
+        }
+        Value::Irrational(irr) => {
+            // Convert irrational to float and take square root
+            let val = irrational_to_float(irr);
+            if val < 0.0 {
+                // sqrt of negative: return complex
+                let abs_val = val.abs();
+                Ok(Value::Complex(
+                    Box::new(Value::Int(0)),
+                    Box::new(Value::Float(abs_val.sqrt())),
+                ))
+            } else {
+                Ok(Value::Float(val.sqrt()))
             }
         }
         _ => Err(format!("sqrt expects number, got {}", args[0].type_name())),
