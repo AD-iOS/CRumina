@@ -463,13 +463,68 @@ impl Interpreter {
             },
 
             (Value::Int(a), Value::Float(b)) | (Value::Float(b), Value::Int(a)) => {
-                let a = *a as f64;
+                let a_float = *a as f64;
                 match op {
-                    BinOp::Add => Ok(Value::Float(a + b)),
-                    BinOp::Sub => Ok(Value::Float(a - b)),
-                    BinOp::Mul => Ok(Value::Float(a * b)),
-                    BinOp::Div => Ok(Value::Float(a / b)),
-                    BinOp::Pow => Ok(Value::Float(a.powf(*b))),
+                    BinOp::Add => Ok(Value::Float(a_float + b)),
+                    BinOp::Sub => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Float(a_float - b))
+                        } else {
+                            Ok(Value::Float(b - a_float))
+                        }
+                    }
+                    BinOp::Mul => Ok(Value::Float(a_float * b)),
+                    BinOp::Div => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Float(a_float / b))
+                        } else {
+                            Ok(Value::Float(b / a_float))
+                        }
+                    }
+                    BinOp::Mod => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Float(a_float % b))
+                        } else {
+                            Ok(Value::Float(b % a_float))
+                        }
+                    }
+                    BinOp::Pow => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Float(a_float.powf(*b)))
+                        } else {
+                            Ok(Value::Float(b.powf(a_float)))
+                        }
+                    }
+                    BinOp::Equal => Ok(Value::Bool((a_float - b).abs() < f64::EPSILON)),
+                    BinOp::NotEqual => Ok(Value::Bool((a_float - b).abs() >= f64::EPSILON)),
+                    BinOp::Greater => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(a_float > *b))
+                        } else {
+                            Ok(Value::Bool(b > &a_float))
+                        }
+                    }
+                    BinOp::GreaterEq => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(a_float >= *b))
+                        } else {
+                            Ok(Value::Bool(b >= &a_float))
+                        }
+                    }
+                    BinOp::Less => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(a_float < *b))
+                        } else {
+                            Ok(Value::Bool(b < &a_float))
+                        }
+                    }
+                    BinOp::LessEq => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(a_float <= *b))
+                        } else {
+                            Ok(Value::Bool(b <= &a_float))
+                        }
+                    }
                     _ => Err(format!("Unsupported operation: int/float {} float/int", op)),
                 }
             }
@@ -494,6 +549,13 @@ impl Interpreter {
                             Ok(Value::Rational(b / &a_rational))
                         }
                     }
+                    BinOp::Mod => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Rational(&a_rational % b))
+                        } else {
+                            Ok(Value::Rational(b % &a_rational))
+                        }
+                    }
                     BinOp::Pow => {
                         // Convert both to float for power operations
                         let a_float = *a as f64;
@@ -503,6 +565,36 @@ impl Interpreter {
                             self.compute_power(a_float, b_float)
                         } else {
                             self.compute_power(b_float, a_float)
+                        }
+                    }
+                    BinOp::Equal => Ok(Value::Bool(&a_rational == b)),
+                    BinOp::NotEqual => Ok(Value::Bool(&a_rational != b)),
+                    BinOp::Greater => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(&a_rational > b))
+                        } else {
+                            Ok(Value::Bool(b > &a_rational))
+                        }
+                    }
+                    BinOp::GreaterEq => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(&a_rational >= b))
+                        } else {
+                            Ok(Value::Bool(b >= &a_rational))
+                        }
+                    }
+                    BinOp::Less => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(&a_rational < b))
+                        } else {
+                            Ok(Value::Bool(b < &a_rational))
+                        }
+                    }
+                    BinOp::LessEq => {
+                        if matches!(left, Value::Int(_)) {
+                            Ok(Value::Bool(&a_rational <= b))
+                        } else {
+                            Ok(Value::Bool(b <= &a_rational))
                         }
                     }
                     _ => Err(format!(
@@ -533,11 +625,48 @@ impl Interpreter {
                             Ok(Value::Float(b_float / a))
                         }
                     }
+                    BinOp::Mod => {
+                        if matches!(left, Value::Float(_)) {
+                            Ok(Value::Float(a % b_float))
+                        } else {
+                            Ok(Value::Float(b_float % a))
+                        }
+                    }
                     BinOp::Pow => {
                         if matches!(left, Value::Float(_)) {
                             self.compute_power(*a, b_float)
                         } else {
                             self.compute_power(b_float, *a)
+                        }
+                    }
+                    BinOp::Equal => Ok(Value::Bool((a - b_float).abs() < f64::EPSILON)),
+                    BinOp::NotEqual => Ok(Value::Bool((a - b_float).abs() >= f64::EPSILON)),
+                    BinOp::Greater => {
+                        if matches!(left, Value::Float(_)) {
+                            Ok(Value::Bool(*a > b_float))
+                        } else {
+                            Ok(Value::Bool(b_float > *a))
+                        }
+                    }
+                    BinOp::GreaterEq => {
+                        if matches!(left, Value::Float(_)) {
+                            Ok(Value::Bool(*a >= b_float))
+                        } else {
+                            Ok(Value::Bool(b_float >= *a))
+                        }
+                    }
+                    BinOp::Less => {
+                        if matches!(left, Value::Float(_)) {
+                            Ok(Value::Bool(*a < b_float))
+                        } else {
+                            Ok(Value::Bool(b_float < *a))
+                        }
+                    }
+                    BinOp::LessEq => {
+                        if matches!(left, Value::Float(_)) {
+                            Ok(Value::Bool(*a <= b_float))
+                        } else {
+                            Ok(Value::Bool(b_float <= *a))
                         }
                     }
                     _ => Err(format!(

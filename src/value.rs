@@ -376,7 +376,7 @@ fn format_irrational(irr: &IrrationalValue) -> String {
                 return coef.to_string();
             }
         }
-        
+
         // Check if this is a square (e.g., π*π or e*e)
         if let Value::Irrational(coef_irr) = coef {
             match (coef_irr, irr) {
