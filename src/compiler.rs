@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /// Bytecode compiler for Rumina
 ///
 /// This module compiles AST to bytecode instructions for the VM.
@@ -448,6 +449,7 @@ impl Compiler {
                 // Resolve include at compile time
                 self.compile_include(path)?;
             }
+            Stmt::Empty => {}
 
             _ => {
                 return Err(RuminaError::runtime(format!(

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 use crate::ast::*;
 use crate::token::Token;
 
@@ -137,6 +138,10 @@ impl Parser {
                     self.match_token(&Token::Semicolon);
                     Ok(Stmt::Expr(expr))
                 }
+            }
+            Token::Semicolon => {
+                self.advance();
+                Ok(Stmt::Empty)
             }
             _ => {
                 let expr = self.parse_expression()?;
