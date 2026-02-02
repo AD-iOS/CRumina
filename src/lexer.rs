@@ -24,7 +24,7 @@ impl Lexer {
     fn advance(&mut self) {
         self.position += 1;
         self.current_char = self.input.get(self.position).copied();
-        if self.current_char == Some('\n') { 
+        if self.current_char == Some('\n') {
             self.line += 1;
             self.col = 1;
         } else {
@@ -384,7 +384,7 @@ impl Lexer {
                     Token::RBracket
                 }
                 '\'' => self.read_single_string(),
-                '"'  => self.read_string(),
+                '"' => self.read_string(),
                 _ if ch.is_ascii_digit() => self.read_number(),
                 _ if ch.is_alphabetic() || ch == '_' => self.read_identifier(),
                 _ => {

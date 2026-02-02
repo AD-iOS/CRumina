@@ -56,7 +56,7 @@ impl Interpreter {
                 // Special handling when object is an identifier (variable)
                 if let Expr::Ident(var_name) = object {
                     let obj = self.eval_expr(object)?;
-                    
+
                     match obj {
                         Value::Struct(s) => {
                             s.borrow_mut().insert(member.clone(), val);
@@ -345,4 +345,3 @@ impl Interpreter {
         }
     }
 }
-

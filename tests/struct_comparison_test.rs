@@ -43,7 +43,10 @@ fn test_struct_equal_same_reference() {
 
     // Same reference should be equal
     let result = interpreter.eval_binary_op(&struct_val, BinOp::Equal, &struct_val2);
-    assert!(result.is_ok(), "struct == struct (same ref) should be supported");
+    assert!(
+        result.is_ok(),
+        "struct == struct (same ref) should be supported"
+    );
     assert_eq!(result.unwrap(), Value::Bool(true));
 }
 
@@ -60,7 +63,10 @@ fn test_struct_equal_different_reference() {
 
     // Different references should not be equal (even with same content)
     let result = interpreter.eval_binary_op(&struct_val1, BinOp::Equal, &struct_val2);
-    assert!(result.is_ok(), "struct == struct (diff ref) should be supported");
+    assert!(
+        result.is_ok(),
+        "struct == struct (diff ref) should be supported"
+    );
     assert_eq!(result.unwrap(), Value::Bool(false));
 }
 
@@ -77,7 +83,10 @@ fn test_struct_not_equal_different_reference() {
 
     // Different references should be not equal
     let result = interpreter.eval_binary_op(&struct_val1, BinOp::NotEqual, &struct_val2);
-    assert!(result.is_ok(), "struct != struct (diff ref) should be supported");
+    assert!(
+        result.is_ok(),
+        "struct != struct (diff ref) should be supported"
+    );
     assert_eq!(result.unwrap(), Value::Bool(true));
 }
 

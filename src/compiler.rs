@@ -211,7 +211,7 @@ impl Compiler {
                     // For variable identifiers, use MemberAssignVar to enable null auto-vivification
                     // Compile the value expression
                     self.compile_expr(value)?;
-                    
+
                     // Emit member assignment with variable name
                     self.emit(OpCode::MemberAssignVar(var_name.clone(), member.clone()));
                 } else {

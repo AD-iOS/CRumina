@@ -24,7 +24,10 @@ fn test_module_member_read_after_write() {
         time.custom + 50;
         "#,
     );
-    assert!(result.is_ok(), "Should be able to read module member after write");
+    assert!(
+        result.is_ok(),
+        "Should be able to read module member after write"
+    );
     if let Ok(Some(value)) = result {
         assert_eq!(value.to_string(), "150");
     }
@@ -56,7 +59,10 @@ fn test_module_multiple_members() {
         time.x + time.y;
         "#,
     );
-    assert!(result.is_ok(), "Should be able to set multiple module members");
+    assert!(
+        result.is_ok(),
+        "Should be able to set multiple module members"
+    );
     if let Ok(Some(value)) = result {
         assert_eq!(value.to_string(), "3");
     }
@@ -70,7 +76,10 @@ fn test_module_access_builtin_member() {
         typeof(random.rand);
         "#,
     );
-    assert!(result.is_ok(), "Should be able to access built-in module members");
+    assert!(
+        result.is_ok(),
+        "Should be able to access built-in module members"
+    );
     if let Ok(Some(value)) = result {
         assert_eq!(value.to_string(), "native_function");
     }
