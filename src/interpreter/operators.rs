@@ -713,6 +713,25 @@ impl Interpreter {
                 _ => Err(format!("Unsupported operation: bool {} bool", op)),
             },
 
+            // Null comparison operations
+            (Value::Null, Value::Null) => match op {
+                BinOp::Equal => Ok(Value::Bool(true)),
+                BinOp::NotEqual => Ok(Value::Bool(false)),
+                _ => Err(format!("Unsupported operation: null {} null", op)),
+            },
+
+            // Null compared with non-null
+            (Value::Null, _) | (_, Value::Null) => match op {
+                BinOp::Equal => Ok(Value::Bool(false)),
+                BinOp::NotEqual => Ok(Value::Bool(true)),
+                _ => Err(format!(
+                    "Unsupported operation: {} {} {}",
+                    left.type_name(),
+                    op,
+                    right.type_name()
+                )),
+            },
+
             // Struct comparison operations
             (Value::Struct(a), Value::Struct(b)) => match op {
                 BinOp::Equal => {
