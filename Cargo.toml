@@ -8,6 +8,7 @@ version = "1.2.3"
 edition = "2024"
 description = "Lamina language compatible interpreter written in rust"
 license = "MPL-2.0"
+default-run = "rumina-cli"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -15,6 +16,14 @@ crate-type = ["cdylib", "rlib"]
 [[bin]]
 name = "rumina-cli"
 path = "src/main.rs"
+
+[[bin]]
+name = "ruminac"
+path = "ruminac/src/main.rs"
+
+[[bin]]
+name = "rmvm"
+path = "rmvm/src/main.rs"
 
 [dependencies]
 num = "^0.4"
