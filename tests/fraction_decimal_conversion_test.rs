@@ -112,8 +112,8 @@ fn test_decimal_maintains_precision_comparison() {
 
 #[test]
 fn test_mixed_rational_and_decimal_conversion() {
-    // Test converting result of decimal operation back
-    let result = run_rumina("var x = 0.1 + 0.2; var y = decimal(x); var z = float(y); z;");
+    // Test converting result of decimal operation through decimal and back to float
+    let result = run_rumina("var r = 0.1 + 0.2; var d = decimal(r); var f = float(d); f;");
     assert!(result.is_ok(), "Failed to execute: {:?}", result);
     
     if let Ok(Some(value)) = result {

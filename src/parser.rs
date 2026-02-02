@@ -46,7 +46,15 @@ impl Parser {
     }
 
     /// Convert decimal string to rational expression (division)
-    /// e.g., "0.1" -> 1/10, "0.25" -> 1/4, "3.14" -> 314/100
+    /// 
+    /// Converts decimal literals to exact rational representations:
+    /// - "0.1" -> 1/10
+    /// - "0.25" -> 1/4 (after simplification)
+    /// - "3.14" -> 314/100 -> 157/50 (after simplification)
+    /// 
+    /// Note: This function only receives positive decimal strings. Negative decimals
+    /// like `-0.1` are handled by the parser as unary negation applied to the positive
+    /// decimal, resulting in `Unary { op: Neg, expr: Decimal("0.1") }`.
     fn decimal_to_rational(&self, decimal_str: &str) -> Result<Expr, String> {
         // Split by decimal point
         let parts: Vec<&str> = decimal_str.split('.').collect();
@@ -68,8 +76,6 @@ impl Parser {
         let denominator = 10_i64.pow(num_decimal_places as u32);
         
         // Combine integer and fractional parts to create numerator
-        // Note: Negative decimals are handled by the parser as unary negation,
-        // so this function only receives positive decimal strings
         let numerator_str = format!("{}{}", integer_part, fractional_part);
         let numerator: i64 = numerator_str.parse()
             .map_err(|_| format!("Failed to parse decimal: {}", decimal_str))?;
