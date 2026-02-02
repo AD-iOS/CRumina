@@ -448,6 +448,7 @@ impl Compiler {
                 // Resolve include at compile time
                 self.compile_include(path)?;
             }
+            Stmt::Empty => {}
 
             _ => {
                 return Err(RuminaError::runtime(format!(

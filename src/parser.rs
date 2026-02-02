@@ -138,6 +138,10 @@ impl Parser {
                     Ok(Stmt::Expr(expr))
                 }
             }
+            Token::Semicolon => {
+                self.advance();
+                Ok(Stmt::Empty)
+            }
             _ => {
                 let expr = self.parse_expression()?;
                 self.match_token(&Token::Semicolon);

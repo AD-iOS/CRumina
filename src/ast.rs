@@ -90,6 +90,7 @@ pub enum Stmt {
 
     // 块语句
     Block(Vec<Stmt>),
+    Empty
 }
 
 /// 表达式

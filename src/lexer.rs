@@ -3,6 +3,8 @@ use crate::token::Token;
 pub struct Lexer {
     input: Vec<char>,
     position: usize,
+    line: usize,
+    col: usize,
     current_char: Option<char>,
 }
 
@@ -13,6 +15,8 @@ impl Lexer {
         Lexer {
             input: chars,
             position: 0,
+            line: 1,
+            col: 1,
             current_char,
         }
     }
@@ -20,6 +24,12 @@ impl Lexer {
     fn advance(&mut self) {
         self.position += 1;
         self.current_char = self.input.get(self.position).copied();
+        if self.current_char == Some('\n') { 
+            self.line += 1;
+            self.col = 1;
+        } else {
+            self.col += 1;
+        }
     }
 
     fn peek(&self) -> Option<char> {
@@ -104,6 +114,41 @@ impl Lexer {
                         'r' => string.push('\r'),
                         '\\' => string.push('\\'),
                         '"' => string.push('"'),
+                        '\'' => string.push('\''),
+                        _ => {
+                            string.push('\\');
+                            string.push(escaped);
+                        }
+                    }
+                    self.advance();
+                }
+            } else {
+                string.push(ch);
+                self.advance();
+            }
+        }
+
+        Token::String(string)
+    }
+    fn read_single_string(&mut self) -> Token {
+        self.advance(); // 跳过开始的引号
+        let mut string = String::new();
+
+        while let Some(ch) = self.current_char {
+            if ch == '\'' {
+                self.advance(); // 跳过结束的引号
+                break;
+            } else if ch == '\\' {
+                self.advance();
+                // 处理转义字符
+                if let Some(escaped) = self.current_char {
+                    match escaped {
+                        'n' => string.push('\n'),
+                        't' => string.push('\t'),
+                        'r' => string.push('\r'),
+                        '\\' => string.push('\\'),
+                        '"' => string.push('"'),
+                        '\'' => string.push('\''),
                         _ => {
                             string.push('\\');
                             string.push(escaped);
@@ -269,8 +314,8 @@ impl Lexer {
                         Token::And
                     } else {
                         eprintln!(
-                            "Lexer error: Expected '&' after '&', found {:?}",
-                            self.current_char
+                            "Lexer error: Expected '&' after '&', found {:?}. at ({}:{})",
+                            self.current_char, self.line, self.col
                         );
                         eprintln!("Note: Lamina uses '&&' for logical AND");
                         std::process::exit(1);
@@ -338,13 +383,14 @@ impl Lexer {
                     self.advance();
                     Token::RBracket
                 }
-                '"' => self.read_string(),
+                '\'' => self.read_single_string(),
+                '"'  => self.read_string(),
                 _ if ch.is_ascii_digit() => self.read_number(),
                 _ if ch.is_alphabetic() || ch == '_' => self.read_identifier(),
                 _ => {
                     eprintln!(
-                        "Lexer error: Unexpected character '{}' (ASCII: {})",
-                        ch, ch as u32
+                        "Lexer error: Unexpected character '{}' (ASCII: {}). at ({},{})",
+                        ch, ch as u32, self.line, self.col
                     );
                     eprintln!("Position: {}", self.position);
                     std::process::exit(1);

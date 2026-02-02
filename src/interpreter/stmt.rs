@@ -311,7 +311,6 @@ impl Interpreter {
 
                 Ok(())
             }
-
             Stmt::Block(stmts) => {
                 for stmt in stmts {
                     self.execute_stmt(stmt)?;
@@ -321,6 +320,7 @@ impl Interpreter {
                 }
                 Ok(())
             }
+            Stmt::Empty => Ok(()),
         }
     }
 }
