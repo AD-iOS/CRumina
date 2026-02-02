@@ -22,6 +22,8 @@ try {
   wasmBgJs = wasmBgJs.replace(/^export const /gm, 'const ')
 
   const exportedFunctions = []
+  const bindingFunctions = []
+
   const functionRegex = /^function (\w+)\s*\(/gm
   for (
     let match = functionRegex.exec(wasmBgJs);
@@ -29,6 +31,16 @@ try {
     match = functionRegex.exec(wasmBgJs)
   ) {
     exportedFunctions.push(match[1])
+  }
+
+  const bindingRegex = /^(?:export )?function (__wbg?_\w+|__wbindgen_\w+)\s*\(/gm
+  const originalContent = readFileSync(wasmBgJsPath, 'utf-8')
+  for (
+    let match = bindingRegex.exec(originalContent);
+    match !== null;
+    match = bindingRegex.exec(originalContent)
+  ) {
+    bindingFunctions.push(match[1])
   }
 
   const header = `// @ts-nocheck
@@ -40,6 +52,9 @@ const wasmBase64 = '${wasmBase64}'
 
 `
 
+  // 动态构建导入对象
+  const importsObj = bindingFunctions.map(fn => `    ${fn}`).join(',\n')
+
   const initCode = `
 // Decode and instantiate WASM module
 const wasmBytes = Uint8Array.from(atob(wasmBase64), c => c.charCodeAt(0))
@@ -48,14 +63,7 @@ const wasmModule = new WebAssembly.Module(wasmBytes)
 // Build imports object
 const imports = {
   './rumina_bg.js': {
-    __wbg_getTime_14776bfb48a1bff9,
-    __wbg_getTimezoneOffset_d391cb11d54969f8,
-    __wbg_new_93d9417ed3fb115d,
-    __wbg_new_0_f9740686d739025c,
-    __wbg_getRandomValues_1c61fac11405ffdc,
-    __wbg___wbindgen_throw_b855445ff6a94295,
-    __wbindgen_init_externref_table,
-    __wbindgen_cast_d6cd19b81560fd6e
+${importsObj}
   }
 }
 
@@ -79,6 +87,7 @@ if (wasm.__wbindgen_start) {
 
   console.log('✓ 成功同步 wasm 绑定代码到:', outputPath)
   console.log(`  导出的函数: ${exportedFunctions.join(', ')}`)
+  console.log(`  绑定函数数量: ${bindingFunctions.length}`)
 } catch (error) {
   console.error('✗ 同步失败:', error.message)
   console.error(error.stack)
