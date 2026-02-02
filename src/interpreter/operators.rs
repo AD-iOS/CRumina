@@ -698,6 +698,10 @@ impl Interpreter {
                 BinOp::Add => Ok(Value::String(format!("{}{}", a, b))),
                 BinOp::Equal => Ok(Value::Bool(a == b)),
                 BinOp::NotEqual => Ok(Value::Bool(a != b)),
+                BinOp::Greater => Ok(Value::Bool(a > b)),
+                BinOp::GreaterEq => Ok(Value::Bool(a >= b)),
+                BinOp::Less => Ok(Value::Bool(a < b)),
+                BinOp::LessEq => Ok(Value::Bool(a <= b)),
                 _ => Err(format!("Unsupported operation: string {} string", op)),
             },
 
