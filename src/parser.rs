@@ -57,11 +57,19 @@ impl Parser {
         let integer_part = parts[0];
         let fractional_part = parts[1];
         
-        // Calculate numerator and denominator
+        // Validate decimal places count to prevent overflow
         let num_decimal_places = fractional_part.len();
+        if num_decimal_places > 18 {
+            // More than 18 decimal places would overflow i64 (10^18 < 2^63)
+            return Err(format!("Too many decimal places (max 18): {}", decimal_str));
+        }
+        
+        // Calculate denominator (safe because we checked num_decimal_places <= 18)
         let denominator = 10_i64.pow(num_decimal_places as u32);
         
-        // Combine integer and fractional parts
+        // Combine integer and fractional parts to create numerator
+        // Note: Negative decimals are handled by the parser as unary negation,
+        // so this function only receives positive decimal strings
         let numerator_str = format!("{}{}", integer_part, fractional_part);
         let numerator: i64 = numerator_str.parse()
             .map_err(|_| format!("Failed to parse decimal: {}", decimal_str))?;

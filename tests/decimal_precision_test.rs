@@ -164,3 +164,53 @@ fn test_complex_decimal_expression() {
         }
     }
 }
+
+#[test]
+fn test_negative_decimal() {
+    // Test negative decimals: -0.1 should equal -1/10
+    let result = run_rumina("-0.1;");
+    assert!(result.is_ok());
+    
+    if let Ok(Some(value)) = result {
+        match value {
+            Value::Rational(r) => {
+                let expected = BigRational::new((-1).into(), 10.into());
+                assert_eq!(r, expected, "-0.1 should equal -1/10");
+            }
+            _ => panic!("Expected Rational, got {:?}", value),
+        }
+    }
+}
+
+#[test]
+fn test_large_decimal() {
+    // Test a decimal with many places: 0.123456789012345678 (18 places, max allowed)
+    let result = run_rumina("0.123456789012345678;");
+    assert!(result.is_ok());
+    
+    if let Ok(Some(value)) = result {
+        match value {
+            Value::Rational(_) => {
+                // Just verify it's a rational, actual value doesn't matter
+            }
+            _ => panic!("Expected Rational, got {:?}", value),
+        }
+    }
+}
+
+#[test]
+fn test_zero_decimal() {
+    // Test 0.0 should equal 0/1
+    let result = run_rumina("0.0;");
+    assert!(result.is_ok());
+    
+    if let Ok(Some(value)) = result {
+        match value {
+            Value::Rational(r) => {
+                let expected = BigRational::new(0.into(), 1.into());
+                assert_eq!(r, expected, "0.0 should equal 0/1");
+            }
+            _ => panic!("Expected Rational, got {:?}", value),
+        }
+    }
+}
