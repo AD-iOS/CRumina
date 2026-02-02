@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /// Bytecode compiler for Rumina
 ///
 /// This module compiles AST to bytecode instructions for the VM.
