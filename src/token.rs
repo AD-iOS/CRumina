@@ -4,6 +4,7 @@ pub enum Token {
     // 字面量
     Int(i64),
     Float(f64),
+    Decimal(String), // Decimal literal like "0.1" - will be converted to rational
     String(String),
     True,
     False,
@@ -88,6 +89,7 @@ impl std::fmt::Display for Token {
         match self {
             Token::Int(n) => write!(f, "{}", n),
             Token::Float(n) => write!(f, "{}", n),
+            Token::Decimal(s) => write!(f, "{}", s),
             Token::String(s) => write!(f, "\"{}\"", s),
             Token::Ident(s) => write!(f, "{}", s),
             _ => write!(f, "{:?}", self),
