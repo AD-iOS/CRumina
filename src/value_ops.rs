@@ -345,6 +345,25 @@ pub fn value_binary_op(left: &Value, op: BinOp, right: &Value) -> Result<Value, 
             _ => Err(format!("Unsupported operation: bool {} bool", op)),
         },
 
+        // Null comparison operations
+        (Value::Null, Value::Null) => match op {
+            BinOp::Equal => Ok(Value::Bool(true)),
+            BinOp::NotEqual => Ok(Value::Bool(false)),
+            _ => Err(format!("Unsupported operation: null {} null", op)),
+        },
+
+        // Null compared with non-null
+        (Value::Null, _) | (_, Value::Null) => match op {
+            BinOp::Equal => Ok(Value::Bool(false)),
+            BinOp::NotEqual => Ok(Value::Bool(true)),
+            _ => Err(format!(
+                "Unsupported operation: {} {} {}",
+                left.type_name(),
+                op,
+                right.type_name()
+            )),
+        },
+
         // For other types, we need the full interpreter logic
         // Fall back to creating an interpreter for these cases
         _ => {

@@ -1310,10 +1310,11 @@ impl VM {
                         let result = native_fn(&args).map_err(|e| RuminaError::runtime(e))?;
                         self.stack.push(result);
                     }
-                    Value::Function { .. } => {
+                    Value::Function { name, .. } => {
                         // Check if we have the function in our function table
                         // Use get() instead of cloned() to avoid cloning FunctionInfo
-                        if let Some(func_info) = self.functions.get(func_name.as_str()) {
+                        // Note: Use the function's actual name, not the variable name
+                        if let Some(func_info) = self.functions.get(name.as_str()) {
                             // Check recursion depth
                             if self.recursion_depth >= self.max_recursion_depth {
                                 return Err(RuminaError::runtime(format!(
