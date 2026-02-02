@@ -709,6 +709,36 @@ impl Interpreter {
                 _ => Err(format!("Unsupported operation: bool {} bool", op)),
             },
 
+            // Struct comparison operations
+            (Value::Struct(a), Value::Struct(b)) => match op {
+                BinOp::Equal => {
+                    // Reference equality - same Rc pointer
+                    Ok(Value::Bool(Rc::ptr_eq(a, b)))
+                }
+                BinOp::NotEqual => {
+                    // Negation of reference equality
+                    Ok(Value::Bool(!Rc::ptr_eq(a, b)))
+                }
+                _ => Err(format!(
+                    "Unsupported operation: {} {} {}",
+                    left.type_name(),
+                    op,
+                    right.type_name()
+                )),
+            },
+
+            // Struct compared with non-struct
+            (Value::Struct(_), _) | (_, Value::Struct(_)) => match op {
+                BinOp::Equal => Ok(Value::Bool(false)), // Structs are only equal to themselves
+                BinOp::NotEqual => Ok(Value::Bool(true)), // Structs are not equal to other types
+                _ => Err(format!(
+                    "Unsupported operation: {} {} {}",
+                    left.type_name(),
+                    op,
+                    right.type_name()
+                )),
+            },
+
             // 字符串与任意类型拼接
             (Value::String(s), other) | (other, Value::String(s)) => match op {
                 BinOp::Add => {
