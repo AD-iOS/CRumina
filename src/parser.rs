@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 use crate::ast::*;
 use crate::token::Token;
 
