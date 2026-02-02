@@ -253,10 +253,9 @@ impl ASTOptimizer {
                         self.modified = true;
                         Ok(Expr::Int(a * b))
                     }
-                    (Expr::Int(a), BinOp::Div, Expr::Int(b)) if *b != 0 => {
-                        self.modified = true;
-                        Ok(Expr::Int(a / b))
-                    }
+                    // Note: Integer division is NOT optimized here because in Lamina,
+                    // integer division produces a rational number (e.g., 1/10), not integer division.
+                    // This is important for decimal precision (e.g., 0.1 is parsed as 1/10).
                     (Expr::Int(a), BinOp::Mod, Expr::Int(b)) if *b != 0 => {
                         self.modified = true;
                         Ok(Expr::Int(a % b))

@@ -90,7 +90,8 @@ impl Lexer {
         }
 
         if is_float {
-            Token::Float(num_str.parse().unwrap())
+            // Return as Decimal token to preserve precision
+            Token::Decimal(num_str)
         } else {
             Token::Int(num_str.parse().unwrap())
         }
@@ -432,7 +433,7 @@ mod tests {
     fn test_float() {
         let mut lexer = Lexer::new("3.14".to_string());
         let tokens = lexer.tokenize();
-        assert_eq!(tokens[0], Token::Float(3.14));
+        assert_eq!(tokens[0], Token::Decimal("3.14".to_string()));
     }
 
     #[test]
