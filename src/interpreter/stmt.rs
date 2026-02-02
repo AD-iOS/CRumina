@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::rc::Rc;
 
-use crate::ast::Stmt;
+use crate::ast::{Expr, Stmt};
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::value::Value;
@@ -51,15 +51,36 @@ impl Interpreter {
                 member,
                 value,
             } => {
-                let obj = self.eval_expr(object)?;
                 let val = self.eval_expr(value)?;
 
-                match obj {
-                    Value::Struct(s) => {
-                        s.borrow_mut().insert(member.clone(), val);
-                        Ok(())
+                // Special handling when object is an identifier (variable)
+                if let Expr::Ident(var_name) = object {
+                    let obj = self.eval_expr(object)?;
+                    
+                    match obj {
+                        Value::Struct(s) => {
+                            s.borrow_mut().insert(member.clone(), val);
+                            Ok(())
+                        }
+                        Value::Null => {
+                            // Auto-vivify: Convert null to empty struct
+                            let new_struct = Rc::new(RefCell::new(HashMap::new()));
+                            new_struct.borrow_mut().insert(member.clone(), val);
+                            self.set_variable(var_name.clone(), Value::Struct(new_struct));
+                            Ok(())
+                        }
+                        _ => Err(format!("Cannot assign member to {}", obj.type_name())),
                     }
-                    _ => Err(format!("Cannot assign member to {}", obj.type_name())),
+                } else {
+                    // For non-identifier expressions, evaluate and check
+                    let obj = self.eval_expr(object)?;
+                    match obj {
+                        Value::Struct(s) => {
+                            s.borrow_mut().insert(member.clone(), val);
+                            Ok(())
+                        }
+                        _ => Err(format!("Cannot assign member to {}", obj.type_name())),
+                    }
                 }
             }
 

@@ -206,14 +206,25 @@ impl Compiler {
                 member,
                 value,
             } => {
-                // Compile the object expression
-                self.compile_expr(object)?;
+                // Check if object is a variable identifier
+                if let Expr::Ident(var_name) = object {
+                    // For variable identifiers, use MemberAssignVar to enable null auto-vivification
+                    // Compile the value expression
+                    self.compile_expr(value)?;
+                    
+                    // Emit member assignment with variable name
+                    self.emit(OpCode::MemberAssignVar(var_name.clone(), member.clone()));
+                } else {
+                    // For other expressions, use regular MemberAssign
+                    // Compile the object expression
+                    self.compile_expr(object)?;
 
-                // Compile the value expression
-                self.compile_expr(value)?;
+                    // Compile the value expression
+                    self.compile_expr(value)?;
 
-                // Emit member assignment
-                self.emit(OpCode::MemberAssign(member.clone()));
+                    // Emit member assignment
+                    self.emit(OpCode::MemberAssign(member.clone()));
+                }
             }
 
             Stmt::Block(statements) => {

@@ -152,8 +152,13 @@ pub enum OpCode {
     /// Assign to array element
     IndexAssign,
 
-    /// Assign to struct member
+    /// Assign to struct member (object is on stack)
     MemberAssign(String),
+
+    /// Assign to struct member where object is a variable (for null auto-vivification)
+    /// Takes: variable_name, member_name
+    /// Pops: value from stack
+    MemberAssignVar(String, String),
 
     // ===== Function Definition Instructions =====
     /// Define a function (boxed to reduce OpCode size)
@@ -544,6 +549,9 @@ impl ByteCode {
             OpCode::Member(name) => format!("Member({})", name),
             OpCode::IndexAssign => "IndexAssign".into(),
             OpCode::MemberAssign(name) => format!("MemberAssign({})", name),
+            OpCode::MemberAssignVar(var, member) => {
+                format!("MemberAssignVar({}, {})", var, member)
+            }
             OpCode::Break => "Break".into(),
             OpCode::Continue => "Continue".into(),
             OpCode::Halt => "Halt".into(),
@@ -726,6 +734,17 @@ impl ByteCode {
             .and_then(|s| s.strip_suffix(")"))
         {
             return Ok(OpCode::MemberAssign(name.to_string()));
+        }
+        if let Some(rest) = s.strip_prefix("MemberAssignVar(") {
+            if let Some(content) = rest.strip_suffix(")") {
+                let parts: Vec<&str> = content.split(", ").collect();
+                if parts.len() == 2 {
+                    return Ok(OpCode::MemberAssignVar(
+                        parts[0].to_string(),
+                        parts[1].to_string(),
+                    ));
+                }
+            }
         }
         if let Some(args) = s
             .strip_prefix("DefineFunc(")
@@ -1861,6 +1880,35 @@ impl VM {
                 match object {
                     Value::Struct(s) | Value::Module(s) => {
                         s.borrow_mut().insert(member_name.clone(), value);
+                    }
+                    _ => {
+                        return Err(RuminaError::runtime(format!(
+                            "Cannot assign member to {}",
+                            object.type_name()
+                        )));
+                    }
+                }
+            }
+
+            OpCode::MemberAssignVar(var_name, member_name) => {
+                // Pop value to assign
+                let value = self
+                    .stack
+                    .pop()
+                    .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
+
+                // Get the variable value
+                let object = self.get_variable(var_name)?;
+
+                match object {
+                    Value::Struct(s) | Value::Module(s) => {
+                        s.borrow_mut().insert(member_name.clone(), value);
+                    }
+                    Value::Null => {
+                        // Auto-vivify: Convert null to empty struct
+                        let new_struct = Rc::new(RefCell::new(HashMap::default()));
+                        new_struct.borrow_mut().insert(member_name.clone(), value);
+                        self.set_variable(var_name.clone(), Value::Struct(new_struct));
                     }
                     _ => {
                         return Err(RuminaError::runtime(format!(
