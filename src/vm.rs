@@ -1158,7 +1158,7 @@ impl VM {
                     .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 match &object {
-                    Value::Struct(s) => {
+                    Value::Struct(s) | Value::Module(s) => {
                         let s_ref = s.borrow();
                         if let Some(value) = s_ref.get(member_name) {
                             // Check if we have a cache entry for this instruction
@@ -1184,13 +1184,14 @@ impl VM {
                             }
 
                             return Err(RuminaError::runtime(format!(
-                                "Struct does not have member '{}'",
+                                "{} does not have member '{}'",
+                                object.type_name(),
                                 member_name
                             )));
                         }
                     }
                     _ => {
-                        // Non-struct type - track miss
+                        // Non-struct/module type - track miss
                         if let Some(cache) = self.member_cache.get_mut(&cache_addr) {
                             cache.misses += 1;
                         } else {
@@ -1858,13 +1859,14 @@ impl VM {
                     .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
 
                 match object {
-                    Value::Struct(s) => {
+                    Value::Struct(s) | Value::Module(s) => {
                         s.borrow_mut().insert(member_name.clone(), value);
                     }
                     _ => {
-                        return Err(RuminaError::runtime(
-                            "Cannot assign member to non-struct value".to_string(),
-                        ));
+                        return Err(RuminaError::runtime(format!(
+                            "Cannot assign member to {}",
+                            object.type_name()
+                        )));
                     }
                 }
             }
