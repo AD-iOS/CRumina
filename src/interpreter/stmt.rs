@@ -64,7 +64,7 @@ impl Interpreter {
                         }
                         Value::Null => {
                             // Auto-vivify: Convert null to empty struct
-                            let new_struct = Rc::new(RefCell::new(HashMap::new()));
+                            let new_struct = Rc::new(RefCell::new(HashMap::default()));
                             new_struct.borrow_mut().insert(member.clone(), val);
                             self.set_variable(var_name.clone(), Value::Struct(new_struct));
                             Ok(())
