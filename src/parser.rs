@@ -46,12 +46,12 @@ impl Parser {
     }
 
     /// Convert decimal string to rational expression (division)
-    /// 
+    ///
     /// Converts decimal literals to exact rational representations:
     /// - "0.1" -> 1/10
     /// - "0.25" -> 1/4 (after simplification)
     /// - "3.14" -> 314/100 -> 157/50 (after simplification)
-    /// 
+    ///
     /// Note: This function only receives positive decimal strings. Negative decimals
     /// like `-0.1` are handled by the parser as unary negation applied to the positive
     /// decimal, resulting in `Unary { op: Neg, expr: Decimal("0.1") }`.
@@ -64,20 +64,21 @@ impl Parser {
 
         let integer_part = parts[0];
         let fractional_part = parts[1];
-        
+
         // Validate decimal places count to prevent overflow
         let num_decimal_places = fractional_part.len();
         if num_decimal_places > 18 {
             // More than 18 decimal places would overflow i64 (10^18 < 2^63)
             return Err(format!("Too many decimal places (max 18): {}", decimal_str));
         }
-        
+
         // Calculate denominator (safe because we checked num_decimal_places <= 18)
         let denominator = 10_i64.pow(num_decimal_places as u32);
-        
+
         // Combine integer and fractional parts to create numerator
         let numerator_str = format!("{}{}", integer_part, fractional_part);
-        let numerator: i64 = numerator_str.parse()
+        let numerator: i64 = numerator_str
+            .parse()
             .map_err(|_| format!("Failed to parse decimal: {}", decimal_str))?;
 
         // Create division expression: numerator / denominator
