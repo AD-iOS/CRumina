@@ -129,6 +129,7 @@ jobs:
           strip target/${{ matrix.target }}/release/rumina-cli
           strip target/${{ matrix.target }}/release/ruminac
           strip target/${{ matrix.target }}/release/rmvm
+          strip target/${{ matrix.target }}/release/rmpack
 
       - name: Prepare artifacts
         shell: bash
@@ -136,35 +137,36 @@ jobs:
           mkdir -p dist
           # Copy rumina-cli (main program)
           cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
-          # Copy ruminac (compiler) and rmvm (VM)
+          # Copy ruminac (compiler), rmvm (VM), and rmpack (packager)
           # Check if target is Windows (either native or cross-compiled)
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            cp target/${{ matrix.target }}/release/ruminac.exe dist/ruminac-${{ matrix.target }}.exe
-            cp target/${{ matrix.target }}/release/rmvm.exe dist/rmvm-${{ matrix.target }}.exe
+            cp target/${{ matrix.target }}/release/ruminac.exe dist/ruminac.exe
+            cp target/${{ matrix.target }}/release/rmvm.exe dist/rmvm.exe
+            cp target/${{ matrix.target }}/release/rmpack.exe dist/rmpack.exe
           else
-            cp target/${{ matrix.target }}/release/ruminac dist/ruminac-${{ matrix.target }}
-            cp target/${{ matrix.target }}/release/rmvm dist/rmvm-${{ matrix.target }}
+            cp target/${{ matrix.target }}/release/ruminac dist/ruminac
+            cp target/${{ matrix.target }}/release/rmvm dist/rmvm
+            cp target/${{ matrix.target }}/release/rmpack dist/rmpack
           fi
 
-      - name: Upload rumina-cli artifact
-        uses: actions/upload-artifact@v6.0.0
-        with:
-          name: ${{ matrix.asset_name }}
-          path: dist/${{ matrix.asset_name }}
-          if-no-files-found: error
+      - name: Create platform package
+        shell: bash
+        run: |
+          cd dist
+          # Create a platform-specific zip file with all binaries
+          PLATFORM_NAME="${{ matrix.target }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a "${PLATFORM_NAME}.zip" *
+          else
+            zip -r "${PLATFORM_NAME}.zip" *
+          fi
+          cd ..
 
-      - name: Upload ruminac artifact
+      - name: Upload platform package artifact
         uses: actions/upload-artifact@v6.0.0
         with:
-          name: ruminac-${{ matrix.target }}
-          path: dist/ruminac-${{ matrix.target }}*
-          if-no-files-found: error
-
-      - name: Upload rmvm artifact
-        uses: actions/upload-artifact@v6.0.0
-        with:
-          name: rmvm-${{ matrix.target }}
-          path: dist/rmvm-${{ matrix.target }}*
+          name: ${{ matrix.target }}
+          path: dist/${{ matrix.target }}.zip
           if-no-files-found: error
 
   release:
@@ -183,13 +185,19 @@ jobs:
         with:
           path: artifacts
 
+      - name: List artifacts
+        run: |
+          ls -la artifacts/
+
       - name: Create checksums
         run: |
           cd artifacts
           for dir in */; do
             cd "$dir"
-            for file in *; do
-              sha256sum "$file" | awk '{print $1}' > "${file}.sha256"
+            for file in *.zip; do
+              if [ -f "$file" ]; then
+                sha256sum "$file" | awk '{print $1}' > "${file}.sha256"
+              fi
             done
             cd ..
           done
@@ -197,7 +205,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2.5.0
         with:
-          files: artifacts/**/*
+          files: artifacts/**/*.zip*
           draft: false
           prerelease: false
           generate_release_notes: true
