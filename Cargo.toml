@@ -1,5 +1,6 @@
 [workspace]
-members = [".", "ruminac", "rmvm"]
+members = [".", "ruminac", "rmvm", "rmpack"]
+exclude = ["rmpack/stub"]
 resolver = "2"
 
 [package]
@@ -24,6 +25,10 @@ path = "ruminac/src/main.rs"
 [[bin]]
 name = "rmvm"
 path = "rmvm/src/main.rs"
+
+[[bin]]
+name = "rmpack"
+path = "rmpack/src/main.rs"
 
 [dependencies]
 num = "^0.4"

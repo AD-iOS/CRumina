@@ -1,0 +1,232 @@
+use rumina::RuminaError;
+use std::env;
+use std::fs;
+use std::io::Read;
+use std::process;
+
+const MAGIC: &[u8] = b"\x52\x4D\x50\x4B\x53\x52\x43\x00"; // RMPKSRC\0 (8 bytes)
+
+fn main() {
+    if let Some(source) = try_extract_embedded_source() {
+        run_embedded_source(&source);
+        return;
+    }
+
+    run_as_packager();
+}
+
+fn try_extract_embedded_source() -> Option<String> {
+    let exe_path = env::current_exe().ok()?;
+    let mut file = fs::File::open(&exe_path).ok()?;
+
+    let mut content = Vec::new();
+    file.read_to_end(&mut content).ok()?;
+
+    let magic_pos = content
+        .windows(MAGIC.len())
+        .rposition(|window| window == MAGIC)?;
+
+    let length_start = magic_pos + MAGIC.len();
+    if content.len() < length_start + 8 {
+        return None;
+    }
+
+    let mut length_bytes = [0u8; 8];
+    length_bytes.copy_from_slice(&content[length_start..length_start + 8]);
+    let source_length = u64::from_le_bytes(length_bytes) as usize;
+
+    let source_start = length_start + 8;
+    let source_end = source_start + source_length;
+
+    if content.len() < source_end {
+        return None;
+    }
+
+    let source_data = &content[source_start..source_end];
+    String::from_utf8(source_data.to_vec()).ok()
+}
+
+fn run_embedded_source(source: &str) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        ctrlc::set_handler(move || {
+            process::exit(0);
+        })
+        .ok();
+    }
+
+    match rumina::run_rumina(source) {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("Runtime error: {}", e);
+            process::exit(1);
+        }
+    }
+}
+
+fn run_as_packager() {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        print_usage();
+        process::exit(1);
+    }
+
+    if args.contains(&"--help".to_string()) || args.contains(&"-h".to_string()) {
+        print_usage();
+        return;
+    }
+
+    let mut config = PackageConfig::default();
+    let mut input_file = None;
+    let mut output_file = None;
+
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--no-optimize" => config.optimize = false,
+            "--debug" => config.debug_info = true,
+            arg if arg.starts_with("--") => {
+                eprintln!("Error: Unknown option '{}'", arg);
+                eprintln!("Use --help for usage information");
+                process::exit(1);
+            }
+            arg => {
+                if input_file.is_none() {
+                    input_file = Some(arg.to_string());
+                } else if output_file.is_none() {
+                    output_file = Some(arg.to_string());
+                } else {
+                    eprintln!("Error: Too many arguments");
+                    process::exit(1);
+                }
+            }
+        }
+        i += 1;
+    }
+
+    let input_file = match input_file {
+        Some(f) => f,
+        None => {
+            eprintln!("Error: No input file specified");
+            process::exit(1);
+        }
+    };
+
+    let output_file = output_file.unwrap_or_else(|| {
+        let input_stem = std::path::Path::new(&input_file)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("output");
+
+        #[cfg(target_os = "windows")]
+        return format!("{}.exe", input_stem);
+
+        #[cfg(not(target_os = "windows"))]
+        return input_stem.to_string();
+    });
+
+    if !std::path::Path::new(&input_file).exists() {
+        eprintln!("Error: Input file '{}' does not exist", input_file);
+        process::exit(1);
+    }
+
+    if !input_file.ends_with(".lm") {
+        eprintln!("Warning: Input file is not a .lm file");
+    }
+
+    config.input_file = input_file;
+    config.output_file = output_file;
+
+    let packager = Packager::new(config);
+
+    if let Err(e) = packager.package() {
+        eprintln!("Packaging failed: {}", e);
+        process::exit(1);
+    }
+}
+
+fn print_usage() {
+    println!("Rumina Packager - Package .lm files into standalone executables");
+    println!();
+    println!("Usage:");
+    println!("  rmpack <input.lm> [output]");
+    println!();
+    println!("Arguments:");
+    println!("  <input.lm>   Input Lamina source file");
+    println!("  [output]     Output executable name (optional)");
+    println!();
+    println!("Options:");
+    println!("  --no-optimize   Disable optimization");
+    println!("  --debug         Include debug information");
+    println!("  --help, -h      Show this help message");
+}
+
+#[derive(Debug, Clone)]
+struct PackageConfig {
+    input_file: String,
+    output_file: String,
+    optimize: bool,
+    debug_info: bool,
+}
+
+impl Default for PackageConfig {
+    fn default() -> Self {
+        Self {
+            input_file: String::new(),
+            output_file: String::new(),
+            optimize: true,
+            debug_info: false,
+        }
+    }
+}
+
+struct Packager {
+    config: PackageConfig,
+}
+
+impl Packager {
+    fn new(config: PackageConfig) -> Self {
+        Self { config }
+    }
+
+    fn package(&self) -> Result<(), RuminaError> {
+        println!("Reading {} ...", self.config.input_file);
+
+        let source = fs::read_to_string(&self.config.input_file)
+            .map_err(|e| RuminaError::runtime(format!("Failed to read input file: {}", e)))?;
+
+        println!("Source code size: {} bytes", source.len());
+        println!("Generating executable {} ...", self.config.output_file);
+
+        let exe_path = env::current_exe().map_err(|e| {
+            RuminaError::runtime(format!("Failed to get current executable path: {}", e))
+        })?;
+
+        let mut rmpack_binary = fs::read(&exe_path)
+            .map_err(|e| RuminaError::runtime(format!("Failed to read rmpack binary: {}", e)))?;
+
+        rmpack_binary.extend_from_slice(MAGIC);
+        let length = source.len() as u64;
+        rmpack_binary.extend_from_slice(&length.to_le_bytes());
+        rmpack_binary.extend_from_slice(source.as_bytes());
+
+        fs::write(&self.config.output_file, rmpack_binary)
+            .map_err(|e| RuminaError::runtime(format!("Failed to write output file: {}", e)))?;
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&self.config.output_file)
+                .map_err(|e| RuminaError::runtime(format!("Failed to get file metadata: {}", e)))?
+                .permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&self.config.output_file, perms).map_err(|e| {
+                RuminaError::runtime(format!("Failed to set executable permissions: {}", e))
+            })?;
+        }
+
+        println!("✓ Packaging completed successfully!");
+        Ok(())
+    }
+}
