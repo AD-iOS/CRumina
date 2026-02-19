@@ -92,12 +92,16 @@ impl Interpreter {
                     local_scope.insert(param.clone(), arg.clone());
                 }
                 self.locals.push(Rc::new(RefCell::new(local_scope)));
+                self.immutable_locals.push(std::collections::HashSet::new());
 
                 // 执行函数体
                 let exec_result = self.execute_stmt(&body);
 
                 // 弹出局部作用域
                 self.locals.pop();
+                if self.immutable_locals.pop().is_none() {
+                    return Err("Internal error: immutable scope stack underflow".to_string());
+                }
 
                 // Pop function name from call stack
                 self.call_stack.pop();
@@ -145,12 +149,16 @@ impl Interpreter {
                     local_scope.insert(param.clone(), arg.clone());
                 }
                 self.locals.push(Rc::new(RefCell::new(local_scope)));
+                self.immutable_locals.push(std::collections::HashSet::new());
 
                 // 执行函数体
                 let exec_result = self.execute_stmt(&body);
 
                 // 弹出局部作用域
                 self.locals.pop();
+                if self.immutable_locals.pop().is_none() {
+                    return Err("Internal error: immutable scope stack underflow".to_string());
+                }
 
                 // Pop lambda from call stack
                 self.call_stack.pop();
@@ -173,6 +181,7 @@ impl Interpreter {
                     "map" => return self.handle_map(&args),
                     "filter" => return self.handle_filter(&args),
                     "reduce" => return self.handle_reduce(&args),
+                    "fold" => return self.handle_reduce(&args),
                     _ => {}
                 }
                 func(&args)
@@ -205,12 +214,16 @@ impl Interpreter {
                     local_scope.insert(param.clone(), arg.clone());
                 }
                 self.locals.push(Rc::new(RefCell::new(local_scope)));
+                self.immutable_locals.push(std::collections::HashSet::new());
 
                 // 执行函数体
                 self.execute_stmt(&body)?;
 
                 // 弹出局部作用域
                 self.locals.pop();
+                if self.immutable_locals.pop().is_none() {
+                    return Err("Internal error: immutable scope stack underflow".to_string());
+                }
 
                 // 获取返回值
                 let result = self.return_value.take().unwrap_or(Value::Null);
@@ -237,12 +250,16 @@ impl Interpreter {
                     local_scope.insert(param.clone(), arg.clone());
                 }
                 self.locals.push(Rc::new(RefCell::new(local_scope)));
+                self.immutable_locals.push(std::collections::HashSet::new());
 
                 // 执行函数体
                 self.execute_stmt(&body)?;
 
                 // 弹出局部作用域
                 self.locals.pop();
+                if self.immutable_locals.pop().is_none() {
+                    return Err("Internal error: immutable scope stack underflow".to_string());
+                }
 
                 // 获取返回值
                 let result = self.return_value.take().unwrap_or(Value::Null);

@@ -193,6 +193,25 @@ impl Compiler {
                 self.symbols.define(name.clone());
             }
 
+            Stmt::LetDecl {
+                name,
+                value,
+                is_bigint,
+                declared_type,
+            } => {
+                self.compile_expr(value)?;
+
+                if let Some(dtype) = declared_type {
+                    self.emit(OpCode::ConvertType(dtype.clone()));
+                } else if *is_bigint {
+                    self.emit(OpCode::ConvertType(DeclaredType::BigInt));
+                }
+
+                self.emit(OpCode::PopVar(name.clone()));
+                self.emit(OpCode::MarkImmutable(name.clone()));
+                self.symbols.define(name.clone());
+            }
+
             Stmt::Assign { name, value } => {
                 // Compile the value expression
                 self.compile_expr(value)?;
@@ -595,6 +614,7 @@ impl Compiler {
         match stmt {
             // Skip module_name variable declaration or assignment
             Stmt::VarDecl { name, .. } if name == "module_name" => Ok(()),
+            Stmt::LetDecl { name, .. } if name == "module_name" => Ok(()),
             Stmt::Assign { name, .. } if name == "module_name" => Ok(()),
 
             // Skip standalone "define" expression (which precedes module_name assignment)
@@ -621,6 +641,28 @@ impl Compiler {
 
                 // Store in prefixed variable
                 self.emit(OpCode::PopVar(prefixed_name.clone()));
+                self.symbols.define(prefixed_name);
+                Ok(())
+            }
+
+            Stmt::LetDecl {
+                name,
+                value,
+                is_bigint,
+                declared_type,
+            } => {
+                let prefixed_name = format!("{}::{}", namespace, name);
+
+                self.compile_expr(value)?;
+
+                if let Some(dtype) = declared_type {
+                    self.emit(OpCode::ConvertType(dtype.clone()));
+                } else if *is_bigint {
+                    self.emit(OpCode::ConvertType(DeclaredType::BigInt));
+                }
+
+                self.emit(OpCode::PopVar(prefixed_name.clone()));
+                self.emit(OpCode::MarkImmutable(prefixed_name.clone()));
                 self.symbols.define(prefixed_name);
                 Ok(())
             }

@@ -6,6 +6,7 @@ use crate::vm_ops::VMOperations;
 use rustc_hash::FxHashMap;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 // Const error messages to avoid allocations
@@ -52,6 +53,9 @@ pub enum OpCode {
 
     /// Pop value from stack and store in variable
     PopVar(String),
+
+    /// Mark a variable as immutable (let binding)
+    MarkImmutable(String),
 
     /// Duplicate top stack value
     Dup,
@@ -517,6 +521,7 @@ impl ByteCode {
             OpCode::PushConstPooled(i) => format!("PushConstPooled({})", i),
             OpCode::PushVar(name) => format!("PushVar({})", name),
             OpCode::PopVar(name) => format!("PopVar({})", name),
+            OpCode::MarkImmutable(name) => format!("MarkImmutable({})", name),
             OpCode::Dup => "Dup".into(),
             OpCode::Pop => "Pop".into(),
             OpCode::Add => "Add".into(),
@@ -673,6 +678,12 @@ impl ByteCode {
         }
         if let Some(name) = s.strip_prefix("PopVar(").and_then(|s| s.strip_suffix(")")) {
             return Ok(OpCode::PopVar(name.to_string()));
+        }
+        if let Some(name) = s
+            .strip_prefix("MarkImmutable(")
+            .and_then(|s| s.strip_suffix(")"))
+        {
+            return Ok(OpCode::MarkImmutable(name.to_string()));
         }
         if let Some(addr) = s.strip_prefix("Jump(").and_then(|s| s.strip_suffix(")")) {
             return Ok(OpCode::Jump(addr.parse().map_err(|_| "Invalid address")?));
@@ -857,6 +868,9 @@ struct CallFrame {
 
     /// Local variables in this frame (FxHashMap for faster access)
     locals: FxHashMap<String, Value>,
+
+    /// Immutable local variable names for this frame
+    immutable_locals: HashSet<String>,
 }
 
 /// Inline cache entry for member access
@@ -906,6 +920,12 @@ pub struct VM {
     /// Current local variables (FxHashMap for faster hashing)
     locals: FxHashMap<String, Value>,
 
+    /// Immutable global variables (top-level let bindings)
+    immutable_globals: HashSet<String>,
+
+    /// Immutable local variables for current frame
+    immutable_locals: HashSet<String>,
+
     /// Loop break/continue targets
     loop_stack: Vec<(usize, usize)>, // (continue_target, break_target)
 
@@ -935,6 +955,8 @@ impl VM {
             globals,
             // Use FxHashMap for faster string hashing
             locals: FxHashMap::default(),
+            immutable_globals: HashSet::new(),
+            immutable_locals: HashSet::new(),
             loop_stack: Vec::with_capacity(8), // Pre-allocate for nested loops
             functions: FxHashMap::default(),
             member_cache: FxHashMap::default(),
@@ -1000,7 +1022,15 @@ impl VM {
                     .stack
                     .pop()
                     .ok_or_else(|| RuminaError::runtime(ERR_STACK_UNDERFLOW))?;
-                self.set_variable(name.clone(), value);
+                self.set_variable_checked(name.clone(), value)?;
+            }
+
+            OpCode::MarkImmutable(name) => {
+                if self.call_stack.is_empty() {
+                    self.immutable_globals.insert(name.clone());
+                } else {
+                    self.immutable_locals.insert(name.clone());
+                }
             }
 
             OpCode::Dup => {
@@ -1240,6 +1270,7 @@ impl VM {
 
                     // Restore the previous local variables
                     self.locals = frame.locals;
+                    self.immutable_locals = frame.immutable_locals;
                 } else {
                     // Top-level return - halt execution
                     self.halted = true;
@@ -1343,6 +1374,7 @@ impl VM {
                                 base_pointer: self.stack.len(),
                                 function_name: func_name.clone(), // Keep clone for error reporting
                                 locals: std::mem::take(&mut self.locals), // Save current locals
+                                immutable_locals: std::mem::take(&mut self.immutable_locals),
                             };
 
                             // Push call frame
@@ -1359,6 +1391,7 @@ impl VM {
                                 new_locals.insert(param_name.clone(), arg_value);
                             }
                             self.locals = new_locals;
+                            self.immutable_locals = HashSet::new();
 
                             // Jump to function body
                             self.ip = body_start;
@@ -1424,6 +1457,7 @@ impl VM {
                             base_pointer: self.stack.len(),
                             function_name: lambda_id.clone(),
                             locals: std::mem::take(&mut self.locals), // Save current locals
+                            immutable_locals: std::mem::take(&mut self.immutable_locals),
                         };
 
                         // Push call frame
@@ -1444,6 +1478,7 @@ impl VM {
                             new_locals.insert(param_name.clone(), arg_value);
                         }
                         self.locals = new_locals;
+                        self.immutable_locals = HashSet::new();
 
                         // Jump to lambda body
                         self.ip = func_info.body_start;
@@ -1515,6 +1550,7 @@ impl VM {
                                 base_pointer: self.stack.len(),
                                 function_name: name.clone(),
                                 locals: std::mem::take(&mut self.locals),
+                                immutable_locals: std::mem::take(&mut self.immutable_locals),
                             };
 
                             // Push call frame
@@ -1531,6 +1567,7 @@ impl VM {
                                 new_locals.insert(param_name.clone(), arg_value);
                             }
                             self.locals = new_locals;
+                            self.immutable_locals = HashSet::new();
 
                             // Jump to function body
                             self.ip = body_start;
@@ -1596,6 +1633,7 @@ impl VM {
                             base_pointer: self.stack.len(),
                             function_name: lambda_id.clone(),
                             locals: std::mem::take(&mut self.locals),
+                            immutable_locals: std::mem::take(&mut self.immutable_locals),
                         };
 
                         // Push call frame
@@ -1609,6 +1647,7 @@ impl VM {
                             .iter()
                             .map(|(k, v)| (k.clone(), v.clone()))
                             .collect();
+                        self.immutable_locals = HashSet::new();
                         for (param_name, arg_value) in params.iter().zip(args.into_iter()) {
                             self.locals.insert(param_name.clone(), arg_value);
                         }
@@ -1706,6 +1745,7 @@ impl VM {
                             base_pointer: self.stack.len(),
                             function_name: lambda_id.clone(),
                             locals: std::mem::take(&mut self.locals),
+                            immutable_locals: std::mem::take(&mut self.immutable_locals),
                         };
 
                         // Push call frame
@@ -1719,6 +1759,7 @@ impl VM {
                             .iter()
                             .map(|(k, v)| (k.clone(), v.clone()))
                             .collect();
+                        self.immutable_locals = HashSet::new();
                         // Inject self
                         self.locals.insert("self".to_string(), object);
                         // Add parameters
@@ -1760,6 +1801,7 @@ impl VM {
                                 base_pointer: self.stack.len(),
                                 function_name: name.clone(),
                                 locals: std::mem::take(&mut self.locals),
+                                immutable_locals: std::mem::take(&mut self.immutable_locals),
                             };
 
                             // Push call frame
@@ -1769,6 +1811,7 @@ impl VM {
                             // Set up parameters as local variables
                             self.locals.clear();
                             self.locals.reserve(params.len() + 1);
+                            self.immutable_locals.clear();
                             // Inject self
                             self.locals.insert("self".to_string(), object);
                             // Add parameters
@@ -1892,6 +1935,8 @@ impl VM {
             }
 
             OpCode::MemberAssignVar(var_name, member_name) => {
+                self.ensure_mutable(var_name)?;
+
                 // Pop value to assign
                 let value = self
                     .stack
@@ -1907,9 +1952,10 @@ impl VM {
                     }
                     Value::Null => {
                         // Auto-vivify: Convert null to empty struct
+                        self.ensure_mutable(var_name)?;
                         let new_struct = Rc::new(RefCell::new(HashMap::default()));
                         new_struct.borrow_mut().insert(member_name.clone(), value);
-                        self.set_variable(var_name.clone(), Value::Struct(new_struct));
+                        self.set_variable_checked(var_name.clone(), Value::Struct(new_struct))?;
                     }
                     _ => {
                         return Err(RuminaError::runtime(format!(
@@ -1997,6 +2043,29 @@ impl VM {
             // Inside a function, use locals
             self.locals.insert(name, value);
         }
+    }
+
+    fn ensure_mutable(&self, name: &str) -> Result<(), RuminaError> {
+        if self.call_stack.is_empty() {
+            if self.immutable_globals.contains(name) {
+                return Err(RuminaError::runtime(format!(
+                    "Cannot assign to immutable variable '{}'",
+                    name
+                )));
+            }
+        } else if self.immutable_locals.contains(name) {
+            return Err(RuminaError::runtime(format!(
+                "Cannot assign to immutable variable '{}'",
+                name
+            )));
+        }
+        Ok(())
+    }
+
+    fn set_variable_checked(&mut self, name: String, value: Value) -> Result<(), RuminaError> {
+        self.ensure_mutable(&name)?;
+        self.set_variable(name, value);
+        Ok(())
     }
 
     /// Get inline cache statistics for debugging/profiling

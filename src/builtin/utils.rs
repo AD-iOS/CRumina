@@ -270,9 +270,27 @@ pub fn fraction(args: &[Value]) -> Result<Value, String> {
 
 // Lamina-compliant: decimal() - convert rational to float
 pub fn decimal(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("decimal expects 1 argument".to_string());
+    if args.is_empty() || args.len() > 2 {
+        return Err("decimal expects 1 or 2 arguments".to_string());
     }
+
+    let precision = if args.len() == 2 {
+        match &args[1] {
+            Value::Int(n) if *n >= 0 && *n <= 15 => *n as i32,
+            _ => return Err("decimal precision must be a non-negative integer <= 15".to_string()),
+        }
+    } else {
+        -1
+    };
+
+    let apply_precision = |f: f64| -> Value {
+        if precision >= 0 {
+            let factor = 10_f64.powi(precision);
+            Value::Float((f * factor).round() / factor)
+        } else {
+            Value::Float(f)
+        }
+    };
 
     match &args[0] {
         Value::Rational(r) => {
@@ -282,10 +300,10 @@ pub fn decimal(args: &[Value]) -> Result<Value, String> {
                 .denom()
                 .to_f64()
                 .ok_or("Denominator too large to convert")?;
-            Ok(Value::Float(numer / denom))
+            Ok(apply_precision(numer / denom))
         }
-        Value::Int(i) => Ok(Value::Float(*i as f64)),
-        Value::Float(f) => Ok(Value::Float(*f)),
+        Value::Int(i) => Ok(apply_precision(*i as f64)),
+        Value::Float(f) => Ok(apply_precision(*f)),
         Value::Complex(re, im) => {
             // Convert symbolic complex to float-based representation
             let re_float = match re.as_ref() {

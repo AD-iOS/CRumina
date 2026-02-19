@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::ast::*;
@@ -36,7 +37,9 @@ mod stmt;
 
 pub struct Interpreter {
     globals: Rc<RefCell<HashMap<String, Value>>>,
+    immutable_globals: HashSet<String>,
     locals: Vec<Rc<RefCell<HashMap<String, Value>>>>,
+    immutable_locals: Vec<HashSet<String>>,
     return_value: Option<Value>,
     break_flag: bool,
     continue_flag: bool,
@@ -62,7 +65,9 @@ impl Interpreter {
 
         Interpreter {
             globals: Rc::new(RefCell::new(globals)),
+            immutable_globals: HashSet::new(),
             locals: Vec::new(),
+            immutable_locals: Vec::new(),
             return_value: None,
             break_flag: false,
             continue_flag: false,
@@ -123,12 +128,56 @@ impl Interpreter {
         Ok(last_value)
     }
 
-    fn set_variable(&mut self, name: String, value: Value) {
+    fn set_variable(&mut self, name: String, value: Value, immutable: bool) {
         if let Some(local) = self.locals.last() {
-            local.borrow_mut().insert(name, value);
+            local.borrow_mut().insert(name.clone(), value);
+            if immutable {
+                if let Some(immutable_scope) = self.immutable_locals.last_mut() {
+                    immutable_scope.insert(name);
+                }
+            }
         } else {
+            let key = name.clone();
             self.globals.borrow_mut().insert(name, value);
+            if immutable {
+                self.immutable_globals.insert(key);
+            }
         }
+    }
+
+    fn is_immutable_binding(&self, name: &str) -> bool {
+        for (i, scope) in self.locals.iter().enumerate().rev() {
+            if scope.borrow().contains_key(name) {
+                return self
+                    .immutable_locals
+                    .get(i)
+                    .map(|set| set.contains(name))
+                    .unwrap_or(false);
+            }
+        }
+
+        self.globals.borrow().contains_key(name) && self.immutable_globals.contains(name)
+    }
+
+    fn assign_variable(&mut self, name: String, value: Value) -> Result<(), String> {
+        if !self.variable_exists(&name) {
+            return Err(format!("Variable '{}' not defined", name));
+        }
+
+        if self.is_immutable_binding(&name) {
+            return Err(format!("Cannot assign to immutable variable '{}'", name));
+        }
+
+        // Assign to nearest existing scope
+        for scope in self.locals.iter().rev() {
+            if scope.borrow().contains_key(&name) {
+                scope.borrow_mut().insert(name, value);
+                return Ok(());
+            }
+        }
+
+        self.globals.borrow_mut().insert(name, value);
+        Ok(())
     }
 
     fn get_variable(&self, name: &str) -> Result<Value, String> {

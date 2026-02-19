@@ -100,13 +100,14 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Stmt, String> {
         match self.current_token() {
-            Token::Var => self.parse_var_decl_with_type(None),
-            Token::BigInt => self.parse_var_decl_with_type(Some(DeclaredType::BigInt)),
+            Token::Var => self.parse_var_decl_with_type(None, false),
+            Token::Let => self.parse_var_decl_with_type(None, true),
+            Token::BigInt => self.parse_var_decl_with_type(Some(DeclaredType::BigInt), false),
             // LSR-005: Type declaration support
             // But also check for namespace access (type::member)
-            Token::TypeInt => self.parse_var_decl_with_type(Some(DeclaredType::Int)),
-            Token::TypeFloat => self.parse_var_decl_with_type(Some(DeclaredType::Float)),
-            Token::TypeBool => self.parse_var_decl_with_type(Some(DeclaredType::Bool)),
+            Token::TypeInt => self.parse_var_decl_with_type(Some(DeclaredType::Int), false),
+            Token::TypeFloat => self.parse_var_decl_with_type(Some(DeclaredType::Float), false),
+            Token::TypeBool => self.parse_var_decl_with_type(Some(DeclaredType::Bool), false),
             Token::TypeString => {
                 // Check if this is namespace access (string::func) or type declaration (string x = ...)
                 if self.tokens.get(self.current + 1) == Some(&Token::DoubleColon) {
@@ -130,13 +131,17 @@ impl Parser {
                         Ok(Stmt::Expr(expr))
                     }
                 } else {
-                    self.parse_var_decl_with_type(Some(DeclaredType::String))
+                    self.parse_var_decl_with_type(Some(DeclaredType::String), false)
                 }
             }
-            Token::TypeRational => self.parse_var_decl_with_type(Some(DeclaredType::Rational)),
-            Token::TypeIrrational => self.parse_var_decl_with_type(Some(DeclaredType::Irrational)),
-            Token::TypeComplex => self.parse_var_decl_with_type(Some(DeclaredType::Complex)),
-            Token::TypeArray => self.parse_var_decl_with_type(Some(DeclaredType::Array)),
+            Token::TypeRational => {
+                self.parse_var_decl_with_type(Some(DeclaredType::Rational), false)
+            }
+            Token::TypeIrrational => {
+                self.parse_var_decl_with_type(Some(DeclaredType::Irrational), false)
+            }
+            Token::TypeComplex => self.parse_var_decl_with_type(Some(DeclaredType::Complex), false),
+            Token::TypeArray => self.parse_var_decl_with_type(Some(DeclaredType::Array), false),
             Token::Struct => self.parse_struct_decl(),
             Token::At => self.parse_decorated_func_def(), // LSR-011: Decorator support
             Token::Func => self.parse_func_def_with_decorators(Vec::new()),
@@ -198,6 +203,7 @@ impl Parser {
     fn parse_var_decl_with_type(
         &mut self,
         declared_type: Option<DeclaredType>,
+        is_immutable: bool,
     ) -> Result<Stmt, String> {
         self.advance(); // 跳过类型关键字或var
 
@@ -217,12 +223,21 @@ impl Parser {
 
         let is_bigint = matches!(declared_type, Some(DeclaredType::BigInt));
 
-        Ok(Stmt::VarDecl {
-            name,
-            is_bigint,
-            declared_type,
-            value,
-        })
+        if is_immutable {
+            Ok(Stmt::LetDecl {
+                name,
+                is_bigint,
+                declared_type,
+                value,
+            })
+        } else {
+            Ok(Stmt::VarDecl {
+                name,
+                is_bigint,
+                declared_type,
+                value,
+            })
+        }
     }
 
     fn parse_struct_decl(&mut self) -> Result<Stmt, String> {
@@ -523,7 +538,37 @@ impl Parser {
 
     // 表达式解析（优先级从低到高）
     fn parse_expression(&mut self) -> Result<Expr, String> {
-        self.parse_or()
+        self.parse_pipeline()
+    }
+
+    fn parse_pipeline(&mut self) -> Result<Expr, String> {
+        let mut left = self.parse_or()?;
+
+        while self.match_token(&Token::PipeForward) {
+            let right = self.parse_or()?;
+            left = Self::transform_pipeline(left, right)?;
+        }
+
+        Ok(left)
+    }
+
+    fn transform_pipeline(left: Expr, right: Expr) -> Result<Expr, String> {
+        match right {
+            Expr::Call { func, mut args } => {
+                let mut new_args = Vec::with_capacity(args.len() + 1);
+                new_args.push(left);
+                new_args.append(&mut args);
+                Ok(Expr::Call {
+                    func,
+                    args: new_args,
+                })
+            }
+            Expr::Ident(_) | Expr::Namespace { .. } | Expr::Member { .. } => Ok(Expr::Call {
+                func: Box::new(right),
+                args: vec![left],
+            }),
+            _ => Err("Pipeline right-hand side must be a callable expression".to_string()),
+        }
     }
 
     fn parse_or(&mut self) -> Result<Expr, String> {

@@ -42,7 +42,10 @@ pub fn reduce(args: &[Value]) -> Result<Value, String> {
         return Err("reduce expects 2 or 3 arguments (array, function, [initial])".to_string());
     }
 
-    Err("reduce implemented in interpreter".to_string())
+    match args[0] {
+        Value::Array(_) => Ok(Value::Null),
+        _ => Err(format!("reduce expects array, got {}", args[0].type_name())),
+    }
 }
 
 pub fn push(args: &[Value]) -> Result<Value, String> {

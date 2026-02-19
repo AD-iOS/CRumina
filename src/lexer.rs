@@ -36,6 +36,10 @@ impl Lexer {
         self.input.get(self.position + 1).copied()
     }
 
+    fn peek_n(&self, n: usize) -> Option<char> {
+        self.input.get(self.position + n).copied()
+    }
+
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.current_char {
             if ch.is_whitespace() && ch != '\\' {
@@ -47,6 +51,41 @@ impl Lexer {
     }
 
     fn skip_comment(&mut self) {
+        // LSR: 单行注释 (# ...)
+        if self.current_char == Some('#')
+            && !(self.peek() == Some('#') && self.peek_n(2) == Some('#'))
+        {
+            while self.current_char.is_some() && self.current_char != Some('\n') {
+                self.advance();
+            }
+            if self.current_char == Some('\n') {
+                self.advance();
+            }
+            return;
+        }
+
+        // LSR: 块注释 (### ... ###)
+        if self.current_char == Some('#') && self.peek() == Some('#') && self.peek_n(2) == Some('#')
+        {
+            self.advance(); // #
+            self.advance(); // #
+            self.advance(); // #
+
+            while self.current_char.is_some() {
+                if self.current_char == Some('#')
+                    && self.peek() == Some('#')
+                    && self.peek_n(2) == Some('#')
+                {
+                    self.advance(); // #
+                    self.advance(); // #
+                    self.advance(); // #
+                    break;
+                }
+                self.advance();
+            }
+            return;
+        }
+
         // 单行注释
         if self.current_char == Some('/') && self.peek() == Some('/') {
             while self.current_char.is_some() && self.current_char != Some('\n') {
@@ -181,6 +220,7 @@ impl Lexer {
         // 检查是否为关键字
         match ident.as_str() {
             "var" => Token::Var,
+            "let" => Token::Let,
             "bigint" => Token::BigInt,
             "struct" => Token::Struct,
             "func" => Token::Func,
@@ -215,8 +255,9 @@ impl Lexer {
             self.skip_whitespace();
 
             // 跳过注释
-            if self.current_char == Some('/')
-                && (self.peek() == Some('/') || self.peek() == Some('*'))
+            if (self.current_char == Some('/')
+                && (self.peek() == Some('/') || self.peek() == Some('*')))
+                || self.current_char == Some('#')
             {
                 self.skip_comment();
                 continue;
@@ -327,6 +368,9 @@ impl Lexer {
                     if self.current_char == Some('|') {
                         self.advance();
                         Token::Or
+                    } else if self.current_char == Some('>') {
+                        self.advance();
+                        Token::PipeForward
                     } else {
                         Token::Pipe
                     }

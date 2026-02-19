@@ -23,6 +23,8 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
     register_fn(globals, "exp", math::exp);
     register_fn(globals, "abs", math::abs_fn);
     register_fn(globals, "log", math::log);
+    register_fn(globals, "ln", math::ln);
+    register_fn(globals, "logBASE", math::logbase);
     register_fn(globals, "factorial", math::factorial);
 
     // LSR-010: 复数函数
@@ -68,6 +70,7 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
     register_fn(globals, "map", array::map);
     register_fn(globals, "filter", array::filter);
     register_fn(globals, "reduce", array::reduce);
+    register_fn(globals, "fold", array::reduce);
     register_fn(globals, "push", array::push);
     register_fn(globals, "pop", array::pop);
     register_fn(globals, "range", array::range);
@@ -218,6 +221,28 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
         "string::replace_by_index",
         string::replace_by_index,
     );
+
+    // LSR-002: 标准常量（物理/化学）
+    globals.insert("EARTH_GRAVITY".to_string(), Value::Float(9.80665));
+    globals.insert("MOON_GRAVITY".to_string(), Value::Float(1.625));
+    globals.insert("MARS_GRAVITY".to_string(), Value::Float(3.72076));
+    globals.insert("WATER_DENSITY".to_string(), Value::Float(1000.0));
+    globals.insert("STANDARD_PRESSURE".to_string(), Value::Float(101325.0));
+    globals.insert("STANDARD_TEMPERATURE".to_string(), Value::Float(273.15));
+    globals.insert("AIR_DENSITY".to_string(), Value::Float(1.225));
+    globals.insert("C".to_string(), Value::Float(2.99792458e8));
+    globals.insert("G".to_string(), Value::Float(6.67430e-11));
+    globals.insert("H".to_string(), Value::Float(6.62607015e-34));
+    globals.insert("KB".to_string(), Value::Float(1.380649e-23));
+    globals.insert("EPSILON_0".to_string(), Value::Float(8.8541878128e-12));
+    globals.insert("MU_0".to_string(), Value::Float(1.25663706212e-6));
+    globals.insert("AVOGADRO".to_string(), Value::Float(6.02214076e23));
+    globals.insert("R".to_string(), Value::Float(8.314462618));
+    globals.insert("FARADAY".to_string(), Value::Float(9.648533212e4));
+    globals.insert("AMU".to_string(), Value::Float(1.66053906660e-27));
+    globals.insert("MOLAR_VOLUME_IDEAL".to_string(), Value::Float(0.024465));
+    globals.insert("ROOM_PRESSURE".to_string(), Value::Float(1.0e5));
+    globals.insert("ROOM_TEMPERATURE".to_string(), Value::Float(297.15));
 }
 
 fn register_fn(

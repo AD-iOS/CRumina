@@ -15,6 +15,7 @@ pub enum Token {
 
     // 关键字
     Var,
+    Let,
     BigInt,
     Struct,
     Func,
@@ -68,6 +69,7 @@ pub enum Token {
     Colon,       // :
     DoubleColon, // ::
     Pipe,        // |
+    PipeForward, // |>
     Backslash,   // \ (续行符)
 
     // 括号

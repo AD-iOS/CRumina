@@ -26,6 +26,14 @@ pub enum Stmt {
         value: Expr,
     },
 
+    // 不可变变量声明（let）
+    LetDecl {
+        name: String,
+        is_bigint: bool,
+        declared_type: Option<DeclaredType>,
+        value: Expr,
+    },
+
     // 赋值
     Assign {
         name: String,

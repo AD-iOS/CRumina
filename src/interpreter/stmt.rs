@@ -33,17 +33,33 @@ impl Interpreter {
                     val
                 };
 
-                self.set_variable(name.clone(), val);
+                self.set_variable(name.clone(), val, false);
+                Ok(())
+            }
+
+            Stmt::LetDecl {
+                name,
+                is_bigint,
+                declared_type,
+                value,
+            } => {
+                let val = self.eval_expr(value)?;
+
+                let val = if let Some(dtype) = declared_type {
+                    convert::convert_to_declared_type(val, dtype)?
+                } else if *is_bigint {
+                    convert::convert_to_bigint(val)?
+                } else {
+                    val
+                };
+
+                self.set_variable(name.clone(), val, true);
                 Ok(())
             }
 
             Stmt::Assign { name, value } => {
                 let val = self.eval_expr(value)?;
-                if !self.variable_exists(name) {
-                    return Err(format!("Variable '{}' not defined", name));
-                }
-                self.set_variable(name.clone(), val);
-                Ok(())
+                self.assign_variable(name.clone(), val)
             }
 
             Stmt::MemberAssign {
@@ -55,6 +71,13 @@ impl Interpreter {
 
                 // Special handling when object is an identifier (variable)
                 if let Expr::Ident(var_name) = object {
+                    if self.is_immutable_binding(var_name) {
+                        return Err(format!(
+                            "Cannot assign to immutable variable '{}'",
+                            var_name
+                        ));
+                    }
+
                     let obj = self.eval_expr(object)?;
 
                     match obj {
@@ -64,9 +87,15 @@ impl Interpreter {
                         }
                         Value::Null => {
                             // Auto-vivify: Convert null to empty struct
+                            if self.is_immutable_binding(var_name) {
+                                return Err(format!(
+                                    "Cannot assign to immutable variable '{}'",
+                                    var_name
+                                ));
+                            }
                             let new_struct = Rc::new(RefCell::new(HashMap::default()));
                             new_struct.borrow_mut().insert(member.clone(), val);
-                            self.set_variable(var_name.clone(), Value::Struct(new_struct));
+                            self.assign_variable(var_name.clone(), Value::Struct(new_struct))?;
                             Ok(())
                         }
                         _ => Err(format!("Cannot assign member to {}", obj.type_name())),
@@ -107,7 +136,7 @@ impl Interpreter {
                     func = self.apply_decorator(&decorator, func)?;
                 }
 
-                self.set_variable(name.clone(), func);
+                self.set_variable(name.clone(), func, false);
                 Ok(())
             }
 
@@ -316,6 +345,7 @@ impl Interpreter {
                 // 创建新的模块作用域
                 let module_scope = Rc::new(RefCell::new(HashMap::new()));
                 self.locals.push(Rc::clone(&module_scope));
+                self.immutable_locals.push(std::collections::HashSet::new());
 
                 // 执行模块代码
                 for stmt in statements {
@@ -324,6 +354,9 @@ impl Interpreter {
 
                 // 弹出模块作用域
                 self.locals.pop();
+                if self.immutable_locals.pop().is_none() {
+                    return Err("Internal error: immutable scope stack underflow".to_string());
+                }
 
                 // 将模块注册为全局变量
                 self.globals

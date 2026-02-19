@@ -1,0 +1,91 @@
+use rumina::{Value, run_rumina};
+
+fn expect_float(result: Result<Option<Value>, rumina::RuminaError>) -> f64 {
+    match result.unwrap() {
+        Some(Value::Float(f)) => f,
+        other => panic!("Expected Float, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_let_is_immutable() {
+    let result = run_rumina("let x = 1; x = 2;");
+    assert!(result.is_err(), "reassigning let should error");
+}
+
+#[test]
+fn test_let_member_assign_is_immutable() {
+    let result = run_rumina("let s = null; s.a = 1;");
+    assert!(
+        result.is_err(),
+        "member assignment on let binding should error"
+    );
+}
+
+#[test]
+fn test_pipeline_operator_basic() {
+    let result = run_rumina("-3 |> abs;").unwrap();
+    match result {
+        Some(Value::Int(n)) => assert_eq!(n, 3),
+        other => panic!("Expected Int(3), got {:?}", other),
+    }
+}
+
+#[test]
+fn test_fold_alias_registered() {
+    let result = run_rumina("typeof(fold);").unwrap();
+    match result {
+        Some(Value::String(s)) => assert_eq!(s, "native_function"),
+        other => panic!("Expected String(native_function), got {:?}", other),
+    }
+}
+
+#[test]
+fn test_hash_comments_line_and_block() {
+    let line = run_rumina("# line comment\n1 + 1;").unwrap();
+    match line {
+        Some(Value::Int(n)) => assert_eq!(n, 2),
+        other => panic!("Expected Int(2), got {:?}", other),
+    }
+
+    let block = run_rumina("### block\ncomment ###\n2 + 3;").unwrap();
+    match block {
+        Some(Value::Int(n)) => assert_eq!(n, 5),
+        other => panic!("Expected Int(5), got {:?}", other),
+    }
+}
+
+#[test]
+fn test_decimal_precision_argument() {
+    let f = expect_float(run_rumina("decimal(1/3, 4);"));
+    assert!((f - 0.3333).abs() < 1e-10, "expected 0.3333, got {}", f);
+}
+
+#[test]
+fn test_log_family_semantics() {
+    let log10 = expect_float(run_rumina("log(100);"));
+    assert!((log10 - 2.0).abs() < 1e-10, "expected 2.0, got {}", log10);
+
+    let ln = expect_float(run_rumina("ln(e());"));
+    assert!((ln - 1.0).abs() < 1e-10, "expected 1.0, got {}", ln);
+
+    let base = expect_float(run_rumina("logBASE(2, 8);"));
+    assert!((base - 3.0).abs() < 1e-10, "expected 3.0, got {}", base);
+}
+
+#[test]
+fn test_lsr002_constants_available() {
+    let g = expect_float(run_rumina("EARTH_GRAVITY;"));
+    assert!(
+        (g - 9.80665).abs() < 1e-12,
+        "unexpected EARTH_GRAVITY: {}",
+        g
+    );
+
+    let avogadro = expect_float(run_rumina("AVOGADRO;"));
+    assert!(
+        (avogadro - 6.02214076e23).abs() / 6.02214076e23 < 1e-12,
+        "unexpected AVOGADRO: {}",
+        avogadro
+    );
+}

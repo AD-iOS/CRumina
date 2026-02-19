@@ -246,7 +246,39 @@ pub fn log(args: &[Value]) -> Result<Value, String> {
         return Err("log expects 1 argument".to_string());
     }
     let val = args[0].to_float()?;
+    if val <= 0.0 {
+        return Err("log domain error: input must be positive".to_string());
+    }
+    Ok(Value::Float(val.log10()))
+}
+
+pub fn ln(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("ln expects 1 argument".to_string());
+    }
+    let val = args[0].to_float()?;
+    if val <= 0.0 {
+        return Err("ln domain error: input must be positive".to_string());
+    }
     Ok(Value::Float(val.ln()))
+}
+
+pub fn logbase(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("logBASE expects 2 arguments (base, value)".to_string());
+    }
+
+    let base = args[0].to_float()?;
+    let val = args[1].to_float()?;
+
+    if base <= 0.0 || (base - 1.0).abs() < f64::EPSILON {
+        return Err("logBASE domain error: base must be positive and not 1".to_string());
+    }
+    if val <= 0.0 {
+        return Err("logBASE domain error: value must be positive".to_string());
+    }
+
+    Ok(Value::Float(val.log(base)))
 }
 
 pub fn factorial(args: &[Value]) -> Result<Value, String> {
