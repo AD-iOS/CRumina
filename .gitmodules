@@ -1,0 +1,3 @@
+[submodule "LSR"]
+	path = LSR
+	url = https://github.com/Lamina-dev/LSR.git
