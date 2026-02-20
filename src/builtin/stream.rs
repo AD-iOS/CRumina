@@ -3,7 +3,7 @@ use crate::value::Value;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Mutex, OnceLock};
@@ -98,12 +98,20 @@ fn build_read_stream(id: i64) -> Value {
         method("ReadStream::readBytes", read_stream_read_bytes),
     );
     fields.insert(
-        "readLine".to_string(),
-        method("ReadStream::readLine", read_stream_read_line),
+        "readUntil".to_string(),
+        method("ReadStream::readUntil", read_stream_read_until),
     );
     fields.insert(
         "readAll".to_string(),
         method("ReadStream::readAll", read_stream_read_all),
+    );
+    fields.insert(
+        "seek".to_string(),
+        method("ReadStream::seek", read_stream_seek),
+    );
+    fields.insert(
+        "tell".to_string(),
+        method("ReadStream::tell", read_stream_tell),
     );
     fields.insert(
         "close".to_string(),
@@ -126,6 +134,14 @@ fn build_write_stream(id: i64) -> Value {
     fields.insert(
         "flush".to_string(),
         method("WriteStream::flush", write_stream_flush),
+    );
+    fields.insert(
+        "seek".to_string(),
+        method("WriteStream::seek", write_stream_seek),
+    );
+    fields.insert(
+        "tell".to_string(),
+        method("WriteStream::tell", write_stream_tell),
     );
     fields.insert(
         "close".to_string(),
@@ -205,11 +221,36 @@ fn read_stream_read_bytes(args: &[Value]) -> Result<Value, String> {
     Ok(new_buffer_from_bytes(buf))
 }
 
-fn read_stream_read_line(args: &[Value]) -> Result<Value, String> {
-    if args.len() != 1 {
-        return Err("readStream.readLine expects no arguments".to_string());
+fn delimiter_bytes(value: &Value) -> Result<Vec<u8>, String> {
+    match value {
+        Value::String(s) => Ok(s.as_bytes().to_vec()),
+        Value::Struct(_) => buffer_to_bytes(value),
+        _ => Err("readStream.readUntil expects delimiter as String or Buffer".to_string()),
+    }
+}
+
+fn read_stream_read_until(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 && args.len() != 3 {
+        return Err(
+            "readStream.readUntil expects 1 or 2 arguments (delimiter, maxBytes?)".to_string(),
+        );
     }
     let id = read_stream_id_from_self(&args[0])?;
+
+    let delimiter = delimiter_bytes(&args[1])?;
+    if delimiter.is_empty() {
+        return Err("readStream.readUntil delimiter cannot be empty".to_string());
+    }
+
+    let max_bytes = if args.len() == 3 {
+        let v = args[2].to_int()?;
+        if v < 0 {
+            return Err("readStream.readUntil maxBytes must be non-negative".to_string());
+        }
+        Some(v as usize)
+    } else {
+        None
+    };
 
     let mut map = readers()
         .lock()
@@ -218,24 +259,39 @@ fn read_stream_read_line(args: &[Value]) -> Result<Value, String> {
         .get_mut(&id)
         .ok_or_else(|| "ReadStream is closed or invalid".to_string())?;
 
-    let mut bytes = Vec::new();
-    let n = reader
-        .read_until(b'\n', &mut bytes)
-        .map_err(|e| format!("readStream.readLine failed: {}", e))?;
-    if n == 0 {
-        return Ok(Value::Null);
-    }
+    let mut out = Vec::new();
+    let mut one = [0u8; 1];
+    let mut reached_eof = false;
 
-    if bytes.ends_with(b"\n") {
-        bytes.pop();
-        if bytes.ends_with(b"\r") {
-            bytes.pop();
+    loop {
+        if let Some(limit) = max_bytes {
+            if out.len() >= limit {
+                break;
+            }
+        }
+
+        let n = reader
+            .read(&mut one)
+            .map_err(|e| format!("readStream.readUntil failed: {}", e))?;
+        if n == 0 {
+            reached_eof = true;
+            break;
+        }
+
+        out.push(one[0]);
+
+        if out.len() >= delimiter.len() && out.ends_with(&delimiter) {
+            let new_len = out.len() - delimiter.len();
+            out.truncate(new_len);
+            break;
         }
     }
 
-    let line = String::from_utf8(bytes)
-        .map_err(|e| format!("readStream.readLine invalid UTF-8: {}", e))?;
-    Ok(Value::String(line))
+    if out.is_empty() && reached_eof {
+        return Ok(Value::Null);
+    }
+
+    Ok(new_buffer_from_bytes(out))
 }
 
 fn read_stream_read_all(args: &[Value]) -> Result<Value, String> {
@@ -268,6 +324,46 @@ fn read_stream_close(args: &[Value]) -> Result<Value, String> {
         .map_err(|_| "ReadStream store lock poisoned".to_string())?;
     map.remove(&id);
     Ok(Value::Null)
+}
+
+fn read_stream_seek(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("readStream.seek expects 1 argument (offset)".to_string());
+    }
+    let id = read_stream_id_from_self(&args[0])?;
+    let offset = args[1].to_int()?;
+    if offset < 0 {
+        return Err("readStream.seek expects non-negative offset".to_string());
+    }
+
+    let mut map = readers()
+        .lock()
+        .map_err(|_| "ReadStream store lock poisoned".to_string())?;
+    let reader = map
+        .get_mut(&id)
+        .ok_or_else(|| "ReadStream is closed or invalid".to_string())?;
+    let pos = reader
+        .seek(SeekFrom::Start(offset as u64))
+        .map_err(|e| format!("readStream.seek failed: {}", e))?;
+    Ok(Value::Int(pos as i64))
+}
+
+fn read_stream_tell(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("readStream.tell expects no arguments".to_string());
+    }
+    let id = read_stream_id_from_self(&args[0])?;
+
+    let mut map = readers()
+        .lock()
+        .map_err(|_| "ReadStream store lock poisoned".to_string())?;
+    let reader = map
+        .get_mut(&id)
+        .ok_or_else(|| "ReadStream is closed or invalid".to_string())?;
+    let pos = reader
+        .stream_position()
+        .map_err(|e| format!("readStream.tell failed: {}", e))?;
+    Ok(Value::Int(pos as i64))
 }
 
 fn write_stream_write_bytes(args: &[Value]) -> Result<Value, String> {
@@ -344,4 +440,44 @@ fn write_stream_close(args: &[Value]) -> Result<Value, String> {
             .map_err(|e| format!("writeStream.close flush failed: {}", e))?;
     }
     Ok(Value::Null)
+}
+
+fn write_stream_seek(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("writeStream.seek expects 1 argument (offset)".to_string());
+    }
+    let id = write_stream_id_from_self(&args[0])?;
+    let offset = args[1].to_int()?;
+    if offset < 0 {
+        return Err("writeStream.seek expects non-negative offset".to_string());
+    }
+
+    let mut map = writers()
+        .lock()
+        .map_err(|_| "WriteStream store lock poisoned".to_string())?;
+    let writer = map
+        .get_mut(&id)
+        .ok_or_else(|| "WriteStream is closed or invalid".to_string())?;
+    let pos = writer
+        .seek(SeekFrom::Start(offset as u64))
+        .map_err(|e| format!("writeStream.seek failed: {}", e))?;
+    Ok(Value::Int(pos as i64))
+}
+
+fn write_stream_tell(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("writeStream.tell expects no arguments".to_string());
+    }
+    let id = write_stream_id_from_self(&args[0])?;
+
+    let mut map = writers()
+        .lock()
+        .map_err(|_| "WriteStream store lock poisoned".to_string())?;
+    let writer = map
+        .get_mut(&id)
+        .ok_or_else(|| "WriteStream is closed or invalid".to_string())?;
+    let pos = writer
+        .stream_position()
+        .map_err(|e| format!("writeStream.tell failed: {}", e))?;
+    Ok(Value::Int(pos as i64))
 }
