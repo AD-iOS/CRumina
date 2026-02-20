@@ -529,6 +529,13 @@ impl Compiler {
             return Ok(());
         }
 
+        if path == "rumina:stream" {
+            self.emit(OpCode::PushVar("rumina:stream".to_string()));
+            self.emit(OpCode::PopVar("stream".to_string()));
+            self.symbols.define("stream".to_string());
+            return Ok(());
+        }
+
         if path == "rumina:buffer" {
             self.emit(OpCode::PushVar("rumina:buffer".to_string()));
             self.emit(OpCode::PopVar("Buffer".to_string()));

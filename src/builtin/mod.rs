@@ -13,6 +13,7 @@ pub mod math;
 pub mod path;
 pub mod process;
 pub mod random;
+pub mod stream;
 pub mod string;
 pub mod time;
 pub mod utils;
@@ -214,6 +215,9 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
 
     let time_module = time::create_time_module();
     globals.insert("rumina:time".to_string(), time_module);
+
+    let stream_module = stream::create_stream_module();
+    globals.insert("rumina:stream".to_string(), stream_module);
 
     // Also register string functions with prefixed names for namespace calls
     register_fn(globals, "string::cat", string::cat);

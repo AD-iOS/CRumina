@@ -322,6 +322,16 @@ impl Interpreter {
                     return Err("Built-in module 'rumina:time' is not registered".to_string());
                 }
 
+                if path == "rumina:stream" {
+                    if let Some(module) = self.globals.borrow().get("rumina:stream").cloned() {
+                        self.globals
+                            .borrow_mut()
+                            .insert("stream".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:stream' is not registered".to_string());
+                }
+
                 if path == "rumina:buffer" {
                     if let Some(module) = self.globals.borrow().get("rumina:buffer").cloned() {
                         self.globals

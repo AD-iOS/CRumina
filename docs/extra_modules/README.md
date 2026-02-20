@@ -8,3 +8,4 @@ Rumina 内置扩展模块文档：
 - [rumina:env](./env.md)
 - [rumina:process](./process.md)
 - [rumina:time](./time.md)
+- [rumina:stream](./stream.md)
