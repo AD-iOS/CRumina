@@ -31,3 +31,45 @@ include "rumina:fs"
 - `fs.removeAll(path: String) -> Void`
 - `fs.rename(oldPath: String, newPath: String) -> Void`
 - `fs.copy(srcPath: String, destPath: String) -> Void`
+
+## 用法示例
+
+```lamina
+include "rumina:buffer";
+include "rumina:fs";
+
+fs.writeText("notes.txt", "hello");
+fs.append("notes.txt", " world");
+print(fs.readText("notes.txt")); // "hello world"
+
+var b = Buffer.alloc(3);
+b.set(0, 65);
+b.set(1, 66);
+b.set(2, 67);
+fs.writeBytes("data.bin", b);
+
+var rb = fs.readBytes("data.bin");
+print(rb.get(0));    // 65
+print(rb.toText());  // "ABC"
+
+print(fs.exists("notes.txt"));
+print(fs.isFile("notes.txt"));
+
+var st = fs.stat("notes.txt");
+print(st.size);
+print(st.modifiedTime);
+
+fs.makeDirAll("tmp/a/b");
+print(fs.readDir("tmp"));
+
+fs.copy("notes.txt", "notes.bak.txt");
+fs.rename("notes.bak.txt", "notes2.txt");
+fs.remove("notes2.txt");
+fs.removeAll("tmp");
+```
+
+## 注意事项
+
+- `writeText/writeBytes` 为覆盖写入。
+- `remove` 仅删除文件或空目录；非空目录请用 `removeAll`。
+- `append` 仅支持 `String` 或 `Buffer`。
