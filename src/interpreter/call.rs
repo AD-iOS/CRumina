@@ -267,8 +267,10 @@ impl Interpreter {
             }
 
             Value::NativeFunction { func, .. } => {
-                // 原生函数不支持self注入，直接调用
-                func(&args)
+                let mut native_args = Vec::with_capacity(args.len() + 1);
+                native_args.push(self_obj);
+                native_args.extend(args);
+                func(&native_args)
             }
 
             _ => Err(format!("Cannot call method on {}", func.type_name())),

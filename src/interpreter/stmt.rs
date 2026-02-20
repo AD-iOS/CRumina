@@ -279,6 +279,29 @@ impl Interpreter {
             }
 
             Stmt::Include(path) => {
+                // Handle built-in virtual modules
+                if path == "rumina:fs" {
+                    if let Some(module) = self.globals.borrow().get("rumina:fs").cloned() {
+                        self.globals.borrow_mut().insert("fs".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:fs' is not registered".to_string());
+                }
+
+                if path == "rumina:buffer" {
+                    if let Some(module) = self.globals.borrow().get("rumina:buffer").cloned() {
+                        self.globals
+                            .borrow_mut()
+                            .insert("Buffer".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:buffer' is not registered".to_string());
+                }
+
+                if path.starts_with("rumina:") {
+                    return Err(format!("Unknown built-in module '{}'", path));
+                }
+
                 // 首先检查是否是已注册的内置模块
                 if self.globals.borrow().contains_key(path) {
                     // 内置模块已经存在，不需要加载

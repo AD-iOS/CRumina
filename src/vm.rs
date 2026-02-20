@@ -1828,6 +1828,15 @@ impl VM {
                             )));
                         }
                     }
+                    Value::NativeFunction {
+                        func: native_fn, ..
+                    } => {
+                        let mut native_args = Vec::with_capacity(args.len() + 1);
+                        native_args.push(object);
+                        native_args.extend(args);
+                        let result = native_fn(&native_args).map_err(RuminaError::runtime)?;
+                        self.stack.push(result);
+                    }
                     _ => {
                         return Err(RuminaError::runtime(format!(
                             "Cannot call method of type {}",

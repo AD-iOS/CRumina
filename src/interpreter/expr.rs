@@ -81,10 +81,10 @@ impl Interpreter {
 
                     // 获取方法
                     let method = match &obj {
-                        Value::Struct(s) => {
+                        Value::Struct(s) | Value::Module(s) => {
                             let s = s.borrow();
                             s.get(member).cloned().ok_or_else(|| {
-                                format!("Struct does not have member '{}'", member)
+                                format!("{} does not have member '{}'", obj.type_name(), member)
                             })?
                         }
                         _ => return Err(format!("Cannot access member of {}", obj.type_name())),
@@ -109,12 +109,12 @@ impl Interpreter {
 
             Expr::Member { object, member } => {
                 let obj = self.eval_expr(object)?;
-                match obj {
-                    Value::Struct(s) => {
+                match &obj {
+                    Value::Struct(s) | Value::Module(s) => {
                         let s = s.borrow();
-                        s.get(member)
-                            .cloned()
-                            .ok_or_else(|| format!("Struct does not have member '{}'", member))
+                        s.get(member).cloned().ok_or_else(|| {
+                            format!("{} does not have member '{}'", obj.type_name(), member)
+                        })
                     }
                     _ => Err(format!("Cannot access member of {}", obj.type_name())),
                 }

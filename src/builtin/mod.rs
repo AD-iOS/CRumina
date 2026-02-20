@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 pub mod array;
+pub mod buffer;
 pub mod cas;
+pub mod fs;
 pub mod math;
 pub mod random;
 pub mod string;
@@ -208,6 +210,13 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
         "string".to_string(),
         Value::Module(Rc::new(RefCell::new(string_ns))),
     );
+
+    // Virtual include modules (imported via include "rumina:*")
+    let buffer_module = buffer::create_buffer_module();
+    globals.insert("rumina:buffer".to_string(), buffer_module);
+
+    let fs_module = fs::create_fs_module();
+    globals.insert("rumina:fs".to_string(), fs_module);
 
     // Also register string functions with prefixed names for namespace calls
     register_fn(globals, "string::cat", string::cat);

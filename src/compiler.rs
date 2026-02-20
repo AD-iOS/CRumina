@@ -493,6 +493,28 @@ impl Compiler {
 
     /// Compile an include statement by reading and inlining the included file
     fn compile_include(&mut self, path: &str) -> Result<(), RuminaError> {
+        // Handle built-in virtual modules directly
+        if path == "rumina:fs" {
+            self.emit(OpCode::PushVar("rumina:fs".to_string()));
+            self.emit(OpCode::PopVar("fs".to_string()));
+            self.symbols.define("fs".to_string());
+            return Ok(());
+        }
+
+        if path == "rumina:buffer" {
+            self.emit(OpCode::PushVar("rumina:buffer".to_string()));
+            self.emit(OpCode::PopVar("Buffer".to_string()));
+            self.symbols.define("Buffer".to_string());
+            return Ok(());
+        }
+
+        if path.starts_with("rumina:") {
+            return Err(RuminaError::runtime(format!(
+                "Unknown built-in module '{}'",
+                path
+            )));
+        }
+
         // Construct file path
         let mut file_path = path.to_string();
 
