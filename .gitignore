@@ -8,7 +8,7 @@ target/
 
 node_modules/
 
-lib
+dist
 src/bindings.ts
 # Yarn PnP files
 .pnp.cjs

@@ -14,4 +14,4 @@ name = "ruminac"
 path = "src/main.rs"
 
 [dependencies]
-rumina = { path = ".." }
+rumina = { path = "../.." }

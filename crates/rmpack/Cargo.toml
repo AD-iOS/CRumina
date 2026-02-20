@@ -10,7 +10,7 @@ name = "rmpack"
 path = "src/main.rs"
 
 [dependencies]
-rumina = { path = ".." }
+rumina = { path = "../.." }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ctrlc = "^3"

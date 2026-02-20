@@ -1,6 +1,6 @@
 [workspace]
-members = [".", "ruminac", "rmvm", "rmpack"]
-exclude = ["rmpack/stub"]
+members = [".", "crates/ruminac", "crates/rmvm", "crates/rmpack"]
+exclude = ["crates/rmpack/stub"]
 resolver = "2"
 
 [package]
@@ -17,18 +17,6 @@ crate-type = ["cdylib", "rlib"]
 [[bin]]
 name = "rumina-cli"
 path = "src/main.rs"
-
-[[bin]]
-name = "ruminac"
-path = "ruminac/src/main.rs"
-
-[[bin]]
-name = "rmvm"
-path = "rmvm/src/main.rs"
-
-[[bin]]
-name = "rmpack"
-path = "rmpack/src/main.rs"
 
 [dependencies]
 num = "^0.4"

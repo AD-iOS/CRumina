@@ -2,21 +2,21 @@
   "name": "rumina",
   "description": "Lamina language compatible interpreter written in rust",
   "version": "1.2.4",
-  "main": "lib/index.cjs",
-  "module": "lib/index.mjs",
-  "types": "lib/index.d.ts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "type": "module",
   "license": "MPL-2.0",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "require": "./lib/index.cjs",
-      "import": "./lib/index.mjs"
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
     },
     "./package.json": "./package.json"
   },
   "files": [
-    "lib"
+    "dist"
   ],
   "packageManager": "yarn@4.11.0",
   "devDependencies": {
@@ -41,8 +41,8 @@
     "rumina"
   ],
   "scripts": {
-    "build": "wasm-pack build --out-dir lib && yarn postbuild && node scripts/sync-wasm-bindings.js && rolldown -c rolldown.config.js",
-    "postbuild": "rimraf lib/.gitignore lib/README.md lib/package.json lib/LICENSE",
+    "build": "wasm-pack build --out-dir dist && yarn postbuild && node scripts/sync-wasm-bindings.js && rolldown -c rolldown.config.js",
+    "postbuild": "rimraf dist/.gitignore dist/README.md dist/package.json dist/LICENSE",
     "lint": "biome check && biome lint",
     "lint-fix": "biome format --write && biome lint --write"
   },

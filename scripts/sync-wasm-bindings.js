@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const wasmBgJsPath = resolve(__dirname, '../lib/rumina_bg.js')
-const wasmBinaryPath = resolve(__dirname, '../lib/rumina_bg.wasm')
+const wasmBgJsPath = resolve(__dirname, '../dist/rumina_bg.js')
+const wasmBinaryPath = resolve(__dirname, '../dist/rumina_bg.wasm')
 const outputPath = resolve(__dirname, '../src/bindings.ts')
 
-console.log('正在从 lib 同步 wasm 绑定代码...')
+console.log('正在从 dist 同步 wasm 绑定代码...')
 
 try {
   let wasmBgJs = readFileSync(wasmBgJsPath, 'utf-8')
@@ -33,7 +33,8 @@ try {
     exportedFunctions.push(match[1])
   }
 
-  const bindingRegex = /^(?:export )?function (__wbg?_\w+|__wbindgen_\w+)\s*\(/gm
+  const bindingRegex =
+    /^(?:export )?function (__wbg?_\w+|__wbindgen_\w+)\s*\(/gm
   const originalContent = readFileSync(wasmBgJsPath, 'utf-8')
   for (
     let match = bindingRegex.exec(originalContent);
@@ -44,7 +45,7 @@ try {
   }
 
   const header = `// @ts-nocheck
-// Auto-generated from lib/rumina_bg.js and lib/rumina_bg.wasm
+// Auto-generated from dist/rumina_bg.js and dist/rumina_bg.wasm
 // Do not edit manually
 
 // Inlined WASM binary (base64 encoded)
@@ -53,7 +54,7 @@ const wasmBase64 = '${wasmBase64}'
 `
 
   // 动态构建导入对象
-  const importsObj = bindingFunctions.map(fn => `    ${fn}`).join(',\n')
+  const importsObj = bindingFunctions.map((fn) => `    ${fn}`).join(',\n')
 
   const initCode = `
 // Decode and instantiate WASM module

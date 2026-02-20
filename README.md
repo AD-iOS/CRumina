@@ -9,8 +9,17 @@
 Rumina 采用 Cargo workspace 结构，包含以下组件：
 
 - **rumina**: 核心库和主程序 (`rumina-cli`)，提供编译器、虚拟机和 REPL 功能
-- **ruminac**: 独立的编译器可执行文件，将 `.lm` 文件编译为 `.rmc` 字节码
-- **rmvm**: 独立的虚拟机可执行文件，执行 `.rmc` 字节码或 `.lm` 文件
+- **crates/ruminac**: 独立的编译器可执行文件，将 `.lm` 文件编译为 `.rmc` 字节码
+- **crates/rmvm**: 独立的虚拟机可执行文件，执行 `.rmc` 字节码或 `.lm` 文件
+- **crates/rmpack**: 打包工具，将 `.lm` 打包为独立可执行文件
+- **third_party/LSR**: LSR 规范子模块
+
+目录约定：
+
+- `src/`：核心解释器与运行时源码
+- `crates/`：独立 CLI 工具（ruminac/rmvm/rmpack）
+- `dist/`：JS/WASM 构建产物目录
+- `scripts/`：构建与同步脚本
 
 ## 主程序
 
