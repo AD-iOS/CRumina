@@ -7,8 +7,11 @@ use std::rc::Rc;
 pub mod array;
 pub mod buffer;
 pub mod cas;
+pub mod env;
 pub mod fs;
 pub mod math;
+pub mod path;
+pub mod process;
 pub mod random;
 pub mod string;
 pub mod time;
@@ -111,25 +114,7 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
     );
 
     // 时间命名空间
-    let mut time_ns = HashMap::new();
-    time_ns.insert(
-        "time".to_string(),
-        Value::NativeFunction {
-            name: "time::time".to_string(),
-            func: time::time,
-        },
-    );
-    time_ns.insert(
-        "date".to_string(),
-        Value::NativeFunction {
-            name: "time::date".to_string(),
-            func: time::date,
-        },
-    );
-    globals.insert(
-        "time".to_string(),
-        Value::Module(Rc::new(RefCell::new(time_ns))),
-    );
+    globals.insert("time".to_string(), time::create_time_module());
 
     // CAS函数（移除cas_前缀）
     register_fn(globals, "parse", cas::parse);
@@ -217,6 +202,18 @@ pub fn register_builtins(globals: &mut HashMap<String, Value>) {
 
     let fs_module = fs::create_fs_module();
     globals.insert("rumina:fs".to_string(), fs_module);
+
+    let path_module = path::create_path_module();
+    globals.insert("rumina:path".to_string(), path_module);
+
+    let env_module = env::create_env_module();
+    globals.insert("rumina:env".to_string(), env_module);
+
+    let process_module = process::create_process_module();
+    globals.insert("rumina:process".to_string(), process_module);
+
+    let time_module = time::create_time_module();
+    globals.insert("rumina:time".to_string(), time_module);
 
     // Also register string functions with prefixed names for namespace calls
     register_fn(globals, "string::cat", string::cat);

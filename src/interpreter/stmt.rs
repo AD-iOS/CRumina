@@ -288,6 +288,40 @@ impl Interpreter {
                     return Err("Built-in module 'rumina:fs' is not registered".to_string());
                 }
 
+                if path == "rumina:path" {
+                    if let Some(module) = self.globals.borrow().get("rumina:path").cloned() {
+                        self.globals.borrow_mut().insert("path".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:path' is not registered".to_string());
+                }
+
+                if path == "rumina:env" {
+                    if let Some(module) = self.globals.borrow().get("rumina:env").cloned() {
+                        self.globals.borrow_mut().insert("env".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:env' is not registered".to_string());
+                }
+
+                if path == "rumina:process" {
+                    if let Some(module) = self.globals.borrow().get("rumina:process").cloned() {
+                        self.globals
+                            .borrow_mut()
+                            .insert("process".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:process' is not registered".to_string());
+                }
+
+                if path == "rumina:time" {
+                    if let Some(module) = self.globals.borrow().get("rumina:time").cloned() {
+                        self.globals.borrow_mut().insert("time".to_string(), module);
+                        return Ok(());
+                    }
+                    return Err("Built-in module 'rumina:time' is not registered".to_string());
+                }
+
                 if path == "rumina:buffer" {
                     if let Some(module) = self.globals.borrow().get("rumina:buffer").cloned() {
                         self.globals

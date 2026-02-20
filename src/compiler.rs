@@ -501,6 +501,34 @@ impl Compiler {
             return Ok(());
         }
 
+        if path == "rumina:path" {
+            self.emit(OpCode::PushVar("rumina:path".to_string()));
+            self.emit(OpCode::PopVar("path".to_string()));
+            self.symbols.define("path".to_string());
+            return Ok(());
+        }
+
+        if path == "rumina:env" {
+            self.emit(OpCode::PushVar("rumina:env".to_string()));
+            self.emit(OpCode::PopVar("env".to_string()));
+            self.symbols.define("env".to_string());
+            return Ok(());
+        }
+
+        if path == "rumina:process" {
+            self.emit(OpCode::PushVar("rumina:process".to_string()));
+            self.emit(OpCode::PopVar("process".to_string()));
+            self.symbols.define("process".to_string());
+            return Ok(());
+        }
+
+        if path == "rumina:time" {
+            self.emit(OpCode::PushVar("rumina:time".to_string()));
+            self.emit(OpCode::PopVar("time".to_string()));
+            self.symbols.define("time".to_string());
+            return Ok(());
+        }
+
         if path == "rumina:buffer" {
             self.emit(OpCode::PushVar("rumina:buffer".to_string()));
             self.emit(OpCode::PopVar("Buffer".to_string()));
