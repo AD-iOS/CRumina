@@ -400,25 +400,25 @@ fn fs_link(args: &[Value]) -> Result<Value, String> {
 
 fn fs_symlink(args: &[Value]) -> Result<Value, String> {
     expect_arity(args, 3, "fs.symlink(target, path)")?;
-    let target = as_path(&args[1], "fs.symlink")?;
-    let path = as_path(&args[2], "fs.symlink")?;
+    let _target = as_path(&args[1], "fs.symlink")?;
+    let _path = as_path(&args[2], "fs.symlink")?;
 
     #[cfg(unix)]
     {
-        std::os::unix::fs::symlink(&target, &path)
-            .map_err(|e| format!("fs.symlink failed '{}'=> '{}': {}", target, path, e))?;
+        std::os::unix::fs::symlink(&_target, &_path)
+            .map_err(|e| format!("fs.symlink failed '{}'=> '{}': {}", _target, _path, e))?;
         return Ok(Value::Null);
     }
 
     #[cfg(windows)]
     {
-        let target_path = Path::new(&target);
+        let target_path = Path::new(&_target);
         let result = if target_path.is_dir() {
-            std::os::windows::fs::symlink_dir(&target, &path)
+            std::os::windows::fs::symlink_dir(&_target, &_path)
         } else {
-            std::os::windows::fs::symlink_file(&target, &path)
+            std::os::windows::fs::symlink_file(&_target, &_path)
         };
-        result.map_err(|e| format!("fs.symlink failed '{}'=> '{}': {}", target, path, e))?;
+        result.map_err(|e| format!("fs.symlink failed '{}'=> '{}': {}", _target, _path, e))?;
         return Ok(Value::Null);
     }
 
