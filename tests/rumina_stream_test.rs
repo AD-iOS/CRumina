@@ -14,17 +14,20 @@ include "rumina:stream";
 include "rumina:buffer";
 
 var w = stream.openWrite("{file}", false);
+w.isClosed();
 w.writeText("line1\nline2\n");
 w.flush();
 w.close();
+var w_closed = w.isClosed();
 
 var r = stream.openRead("{file}");
 var l1 = r.readUntil("\n");
 var l2 = r.readUntil("\n");
 var l3 = r.readUntil("\n");
 r.close();
+var r_closed = r.isClosed();
 
-if (l1.toText() == "line1" && l2.toText() == "line2" && l3 == null) {{
+if (l1.toText() == "line1" && l2.toText() == "line2" && l3 == null && w_closed && r_closed) {{
     "ok";
 }} else {{
     "bad";

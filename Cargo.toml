@@ -26,6 +26,9 @@ lazy_static = "^1.4"
 mathcore = "^0.3.1"
 rustc-hash = "^2.0"
 rayon = "^1.11"
+base64 = "^0.22"
+hex = "^0.4"
+pathdiff = "^0.2"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ctrlc = "^3"

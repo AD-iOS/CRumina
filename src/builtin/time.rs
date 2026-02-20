@@ -9,6 +9,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 static TIMER_SEQ: AtomicI64 = AtomicI64::new(1);
 static TIMERS: OnceLock<Mutex<HashMap<i64, Instant>>> = OnceLock::new();
+static BOOT_INSTANT: OnceLock<Instant> = OnceLock::new();
 
 fn timers() -> &'static Mutex<HashMap<i64, Instant>> {
     TIMERS.get_or_init(|| Mutex::new(HashMap::new()))
@@ -17,6 +18,7 @@ fn timers() -> &'static Mutex<HashMap<i64, Instant>> {
 pub fn create_time_module() -> Value {
     let mut ns = HashMap::new();
     insert_fn(&mut ns, "now", time_now);
+    insert_fn(&mut ns, "hrtimeMs", time_hrtime_ms);
     insert_fn(&mut ns, "sleep", time_sleep);
     insert_fn(&mut ns, "startTimer", time_start_timer);
     Value::Module(Rc::new(RefCell::new(ns)))
@@ -109,6 +111,14 @@ pub fn time_sleep(args: &[Value]) -> Result<Value, String> {
     }
     thread::sleep(Duration::from_millis(ms as u64));
     Ok(Value::Null)
+}
+
+pub fn time_hrtime_ms(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("time.hrtimeMs expects no arguments".to_string());
+    }
+    let boot = BOOT_INSTANT.get_or_init(Instant::now);
+    Ok(Value::Float(boot.elapsed().as_secs_f64() * 1000.0))
 }
 
 pub fn time_start_timer(args: &[Value]) -> Result<Value, String> {

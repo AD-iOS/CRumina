@@ -4,33 +4,25 @@
 include "rumina:process"
 ```
 
-导入后可使用 `process` 对象（进程控制与执行上下文）：
+进程与执行上下文信息。
+
+## 方法
 
 - `process.args() -> List<String>`
+  启动参数列表。
 - `process.cwd() -> String`
+  当前工作目录。
 - `process.setCwd(path: String) -> Void`
+  修改当前工作目录。
 - `process.pid() -> Int`
+  当前进程 ID。
 - `process.exit(code: Int) -> Void`
-
-## 用法示例
-
-```lamina
-include "rumina:process";
-
-var args = process.args();
-print(args);
-
-print(process.pid());
-
-var old = process.cwd();
-process.setCwd("./examples");
-print(process.cwd());
-process.setCwd(old);
-
-// process.exit(0); // 立即退出进程
-```
-
-## 注意事项
-
-- `args()[0]` 通常是解释器或脚本入口信息。
-- `process.exit(code)` 调用后不会继续执行后续语句。
+  立即退出进程。
+- `process.platform() -> String`
+  运行平台标识。
+- `process.arch() -> String`
+  CPU 架构标识。
+- `process.version() -> String`
+  Rumina 运行时版本字符串。
+- `process.execPath() -> String`
+  当前可执行文件路径。

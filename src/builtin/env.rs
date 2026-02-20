@@ -11,6 +11,7 @@ pub fn create_env_module() -> Value {
     insert_fn(&mut ns, "has", env_has);
     insert_fn(&mut ns, "remove", env_remove);
     insert_fn(&mut ns, "all", env_all);
+    insert_fn(&mut ns, "keys", env_keys);
     Value::Module(Rc::new(RefCell::new(ns)))
 }
 
@@ -84,4 +85,14 @@ fn env_all(args: &[Value]) -> Result<Value, String> {
         map.insert(k, Value::String(v));
     }
     Ok(Value::Struct(Rc::new(RefCell::new(map))))
+}
+
+fn env_keys(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("env.keys expects no arguments".to_string());
+    }
+    let keys = env::vars()
+        .map(|(k, _)| Value::String(k))
+        .collect::<Vec<_>>();
+    Ok(Value::Array(Rc::new(RefCell::new(keys))))
 }

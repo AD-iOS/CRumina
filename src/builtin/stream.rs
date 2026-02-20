@@ -114,6 +114,10 @@ fn build_read_stream(id: i64) -> Value {
         method("ReadStream::tell", read_stream_tell),
     );
     fields.insert(
+        "isClosed".to_string(),
+        method("ReadStream::isClosed", read_stream_is_closed),
+    );
+    fields.insert(
         "close".to_string(),
         method("ReadStream::close", read_stream_close),
     );
@@ -142,6 +146,10 @@ fn build_write_stream(id: i64) -> Value {
     fields.insert(
         "tell".to_string(),
         method("WriteStream::tell", write_stream_tell),
+    );
+    fields.insert(
+        "isClosed".to_string(),
+        method("WriteStream::isClosed", write_stream_is_closed),
     );
     fields.insert(
         "close".to_string(),
@@ -366,6 +374,17 @@ fn read_stream_tell(args: &[Value]) -> Result<Value, String> {
     Ok(Value::Int(pos as i64))
 }
 
+fn read_stream_is_closed(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("readStream.isClosed expects no arguments".to_string());
+    }
+    let id = read_stream_id_from_self(&args[0])?;
+    let map = readers()
+        .lock()
+        .map_err(|_| "ReadStream store lock poisoned".to_string())?;
+    Ok(Value::Bool(!map.contains_key(&id)))
+}
+
 fn write_stream_write_bytes(args: &[Value]) -> Result<Value, String> {
     if args.len() != 2 {
         return Err("writeStream.writeBytes expects 1 argument (data)".to_string());
@@ -480,4 +499,15 @@ fn write_stream_tell(args: &[Value]) -> Result<Value, String> {
         .stream_position()
         .map_err(|e| format!("writeStream.tell failed: {}", e))?;
     Ok(Value::Int(pos as i64))
+}
+
+fn write_stream_is_closed(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("writeStream.isClosed expects no arguments".to_string());
+    }
+    let id = write_stream_id_from_self(&args[0])?;
+    let map = writers()
+        .lock()
+        .map_err(|_| "WriteStream store lock poisoned".to_string())?;
+    Ok(Value::Bool(!map.contains_key(&id)))
 }

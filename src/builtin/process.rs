@@ -12,6 +12,10 @@ pub fn create_process_module() -> Value {
     insert_fn(&mut ns, "setCwd", process_set_cwd);
     insert_fn(&mut ns, "pid", process_pid);
     insert_fn(&mut ns, "exit", process_exit);
+    insert_fn(&mut ns, "platform", process_platform);
+    insert_fn(&mut ns, "arch", process_arch);
+    insert_fn(&mut ns, "version", process_version);
+    insert_fn(&mut ns, "execPath", process_exec_path);
     Value::Module(Rc::new(RefCell::new(ns)))
 }
 
@@ -74,4 +78,33 @@ fn process_exit(args: &[Value]) -> Result<Value, String> {
     }
     let code = args[1].to_int()?;
     process::exit(code as i32)
+}
+
+fn process_platform(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("process.platform expects no arguments".to_string());
+    }
+    Ok(Value::String(std::env::consts::OS.to_string()))
+}
+
+fn process_arch(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("process.arch expects no arguments".to_string());
+    }
+    Ok(Value::String(std::env::consts::ARCH.to_string()))
+}
+
+fn process_version(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("process.version expects no arguments".to_string());
+    }
+    Ok(Value::String(format!("v{}", env!("CARGO_PKG_VERSION"))))
+}
+
+fn process_exec_path(args: &[Value]) -> Result<Value, String> {
+    if args.len() != 1 {
+        return Err("process.execPath expects no arguments".to_string());
+    }
+    let path = env::current_exe().map_err(|e| format!("process.execPath failed: {}", e))?;
+    Ok(Value::String(path.to_string_lossy().to_string()))
 }

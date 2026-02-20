@@ -4,35 +4,22 @@
 include "rumina:time"
 ```
 
-导入后可使用 `time` 对象：
+同步时间与计时 API。
 
-- `time.now() -> Int`（Unix 毫秒时间戳）
+## time 方法
+
+- `time.now() -> Int`
+  Unix 毫秒时间戳（系统时钟）。
+- `time.hrtimeMs() -> Float`
+  单调时钟毫秒值（适合性能计时）。
 - `time.sleep(ms: Int) -> Void`
+  阻塞休眠指定毫秒。
 - `time.startTimer() -> Timer`
+  创建高精度计时器。
 
-`Timer` 对象实例方法：
+## Timer 方法
 
 - `timer.elapsedMs() -> Float`
+  已耗时毫秒。
 - `timer.elapsedSec() -> Float`
-
-## 用法示例
-
-```lamina
-include "rumina:time";
-
-var t0 = time.now();
-time.sleep(50);
-var t1 = time.now();
-print(t1 - t0);
-
-var timer = time.startTimer();
-// 执行需要测量的逻辑...
-time.sleep(20);
-print(timer.elapsedMs());
-print(timer.elapsedSec());
-```
-
-## 注意事项
-
-- `time.now()` 是 Unix 毫秒时间戳（系统时钟）。
-- 性能计时推荐 `startTimer()` + `elapsedMs/elapsedSec`（单调时钟）。
+  已耗时秒。
