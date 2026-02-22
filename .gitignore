@@ -33,3 +33,4 @@ obj/*
 # other
 !Terminal
 Terminal
+.git-pr
