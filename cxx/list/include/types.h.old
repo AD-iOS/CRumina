@@ -1,0 +1,59 @@
+#pragma once
+
+#include <string>
+#include <vector>
+#include <memory>
+#include <unordered_map>
+#include <variant>
+#include <cstdint>
+
+namespace rumina {
+
+// 前向声明
+class Value;
+class Stmt;
+class Expr;
+
+// 错误类型
+enum class ErrorType {
+    RuntimeError,
+    TypeError,
+    IndexError,
+    KeyError,
+    DivisionByZeroError,
+    UndefinedVariableError
+};
+
+// 栈帧
+struct StackFrame {
+    std::string function_name;
+    std::string file_name;
+    std::optional<size_t> line_number;
+};
+
+// 声明类型
+enum class DeclaredType {
+    Int,
+    Float,
+    Bool,
+    String,
+    Rational,
+    Irrational,
+    Complex,
+    Array,
+    BigInt
+};
+
+// 二元运算符
+enum class BinOp {
+    Add, Sub, Mul, Div, Mod, Pow,
+    Equal, NotEqual, Greater, GreaterEq, Less, LessEq,
+    And, Or
+};
+
+// 一元运算符
+enum class UnaryOp {
+    Neg, Not, Factorial
+};
+
+} // namespace rumina

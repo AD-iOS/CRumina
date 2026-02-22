@@ -1,0 +1,15 @@
+# !/bin/sh -
+
+cxx=$(which c++)
+b=build
+
+darwin_framework=(
+    -framework CoreFoundation
+    -framework CoreServices
+)
+
+c++ -o rumina \
+    *.o \
+    -lgmp -lgmpxx \
+    "${darwin_framework[@]}" \
+    -Wl,-undefined,dynamic_lookup

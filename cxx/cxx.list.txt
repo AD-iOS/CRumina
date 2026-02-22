@@ -1,0 +1,84 @@
+./
+|-- cxx.list.txt
+|-- include
+|   |-- allinclude.md
+|   |-- ast.h
+|   |-- builtin
+|   |   |-- allinclude.builtin.md
+|   |   |-- array.h
+|   |   |-- buffer.h
+|   |   |-- builtin.h
+|   |   |-- cas.h
+|   |   |-- env.h
+|   |   |-- fs.h
+|   |   |-- math.h
+|   |   |-- path.h
+|   |   |-- process.h
+|   |   |-- random.h
+|   |   |-- stream.h
+|   |   |-- string.h
+|   |   |-- time.h
+|   |   |-- update-cxx-builtin
+|   |   `-- utils.h
+|   |-- bytecode_optimizer.h
+|   |-- call.h
+|   |-- cas.h
+|   |-- compiler.h
+|   |-- convert.h
+|   |-- error.h
+|   |-- expr.h
+|   |-- fwd.h
+|   |-- interpreter.h
+|   |-- lexer.h
+|   |-- operators.h
+|   |-- optimizer.h
+|   |-- parser.h
+|   |-- result.h
+|   |-- stmt.h
+|   |-- token.h
+|   |-- types.h.old
+|   |-- update-cxx
+|   |-- value.h
+|   |-- value_ops.h
+|   |-- vm.h
+|   `-- vm_ops.h
+|-- list-si
+`-- src
+    |-- ast.cc
+    |-- build
+    |-- builtin
+    |   |-- array.cc
+    |   |-- buffer.cc
+    |   |-- build
+    |   |-- builtin.cc
+    |   |-- env.cc
+    |   |-- fs.cc
+    |   |-- math.cc
+    |   |-- obj-build
+    |   |-- path.cc
+    |   |-- process.cc
+    |   |-- random.cc
+    |   |-- stream.cc
+    |   |-- string.cc
+    |   |-- term
+    |   |-- time.cc
+    |   `-- utils.cc
+    |-- bytecode_optimizer.cc
+    |-- cas.cc
+    |-- compiler.cc
+    |-- error.cc
+    |-- interpreter.cc
+    |-- lexer.cc
+    |-- main.cc
+    |-- obj-build
+    |-- optimizer.cc
+    |-- parser.cc
+    |-- token.cc
+    |-- value.cc
+    |-- value_ops.cc
+    |-- vm.cc
+    |-- vm_ops.cc
+    |-- wasm.cc
+    `-- wasm.cc.old
+
+6 directories, 75 files

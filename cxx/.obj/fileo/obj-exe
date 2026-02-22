@@ -1,0 +1,17 @@
+# !/bin/sh -
+
+cxx=$(which c++)
+b=build
+
+darwin_framework=(
+    -framework CoreFoundation
+    -framework CoreServices
+)
+
+c++ -o "rumina-cli-ios-arm64-procursus" \
+    *.o \
+    -lgmp -lgmpxx \
+    "${darwin_framework[@]}" \
+    -Wl,-undefined,dynamic_lookup && \
+    ldid -S../ens/ens.xml -Hsha256 -M "rumina-cli-ios-arm64-procursus"
+

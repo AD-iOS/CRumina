@@ -1,0 +1,213 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Tier 1: Windows MSVC
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: rumina-cli.exe
+            asset_name: rumina-cli-windows-x64.exe
+
+          # Tier 2: Windows ARM64 MSVC
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact_name: rumina-cli.exe
+            asset_name: rumina-cli-windows-arm64.exe
+
+          # Tier 1: macOS
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-macos-arm64
+
+          # Tier 1: Linux x86/x64 (glibc)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-x64-gnu
+
+          # Tier 2: Linux x86/x64 (musl)
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-x64-musl
+
+          # Tier 1: Linux ARM64 (glibc)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm64-gnu
+
+          # Tier 2: Linux ARM64 (musl)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm64-musl
+
+          # Tier 2: Linux ARM (glibc)
+          - os: ubuntu-latest
+            target: arm-unknown-linux-gnueabi
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm-gnueabi
+          - os: ubuntu-latest
+            target: arm-unknown-linux-gnueabihf
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-arm-gnueabihf
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-linux-armv7-gnueabihf
+
+          # Android
+          - os: ubuntu-latest
+            target: aarch64-linux-android
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-android-arm64
+          - os: ubuntu-latest
+            target: x86_64-linux-android
+            artifact_name: rumina-cli
+            asset_name: rumina-cli-android-x86_64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.1
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.target != 'x86_64-unknown-linux-gnu' && runner.os == 'Linux'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Cache cargo registry
+        uses: actions/cache@v5.0.1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v5.0.1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v5.0.1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build (native)
+        if: matrix.target == 'x86_64-unknown-linux-gnu' || runner.os != 'Linux'
+        run: cargo build --release --target ${{ matrix.target }} --workspace
+
+      - name: Build (cross)
+        if: matrix.target != 'x86_64-unknown-linux-gnu' && runner.os == 'Linux'
+        run: cross build --release --target ${{ matrix.target }} --workspace
+
+      - name: Strip binaries (Linux/macOS)
+        if: runner.os != 'Windows' && matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          strip target/${{ matrix.target }}/release/rumina-cli
+          strip target/${{ matrix.target }}/release/ruminac
+          strip target/${{ matrix.target }}/release/rmvm
+          strip target/${{ matrix.target }}/release/rmpack
+
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          # Copy rumina-cli (main program)
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
+          # Copy ruminac (compiler), rmvm (VM), and rmpack (packager)
+          # Check if target is Windows (either native or cross-compiled)
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            cp target/${{ matrix.target }}/release/ruminac.exe dist/ruminac.exe
+            cp target/${{ matrix.target }}/release/rmvm.exe dist/rmvm.exe
+            cp target/${{ matrix.target }}/release/rmpack.exe dist/rmpack.exe
+          else
+            cp target/${{ matrix.target }}/release/ruminac dist/ruminac
+            cp target/${{ matrix.target }}/release/rmvm dist/rmvm
+            cp target/${{ matrix.target }}/release/rmpack dist/rmpack
+          fi
+
+      - name: Create platform package
+        shell: bash
+        run: |
+          cd dist
+          # Create a platform-specific zip file with all binaries
+          PLATFORM_NAME="${{ matrix.target }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            7z a "${PLATFORM_NAME}.zip" *
+          else
+            zip -r "${PLATFORM_NAME}.zip" *
+          fi
+          cd ..
+
+      - name: Upload platform package artifact
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: ${{ matrix.target }}
+          path: dist/${{ matrix.target }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6.0.1
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7.0.0
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: |
+          ls -la artifacts/
+
+      - name: Create checksums
+        run: |
+          cd artifacts
+          for dir in */; do
+            cd "$dir"
+            for file in *.zip; do
+              if [ -f "$file" ]; then
+                sha256sum "$file" | awk '{print $1}' > "${file}.sha256"
+              fi
+            done
+            cd ..
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2.5.0
+        with:
+          files: artifacts/**/*.zip*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

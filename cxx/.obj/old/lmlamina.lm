@@ -1,0 +1,1838 @@
+// Infrastructure - Linked List Library
+// https://gist.github.com/AtklomFW555/0f1b7e5b97c1c5935a922b6e593a0251/
+
+func linked_list_create() {
+    var head = linked_list_node_create(null);
+    var tail = linked_list_node_create(null);
+    head.succ = tail;
+    tail.pred = head;
+    struct LinkedList { head = head; tail = tail; };
+    return LinkedList;
+}
+
+func linked_list_node_create(data) {
+    struct LinkedListNode { pred = null; succ = null; data = data; };
+    return LinkedListNode;
+}
+
+func linked_list_node_append(node, data) {
+    var new_node = linked_list_node_create(data);
+    new_node.pred = node;
+    new_node.succ = node.succ;
+    if node.succ != null {
+        node.succ.pred = new_node;
+    }
+    node.succ = new_node;
+    return new_node;
+}
+
+func linked_list_append(list, data) {
+    linked_list_node_append(list.tail.pred, data);
+}
+
+func linked_list_traverse(list, callback) {
+    var head = list.head;
+    while head.succ != null {
+        head = head.succ;
+        callback(head.data);
+    }
+}
+
+func linked_list_nth(list, n) {
+    var head = list.head;
+    while n >= 0 {
+        head = head.succ;
+        n = n - 1;
+    }
+    return head;
+}
+
+func linked_list_find(list, data) {
+    var head = list.head;
+    while head.succ != null {
+        head = head.succ;
+        if head.data == data {
+            return head;
+        }
+    }
+    return null;
+}
+
+func linked_list_length(list) {
+    var len = 0;
+    var head = list.head;
+    while head.succ != null {
+        head = head.succ;
+        len = len + 1;
+    }
+    return len - 1; // remove tail
+}
+
+// Infrastructure - key-value pair based on linked list
+
+func map_create() {
+    return linked_list_create();
+}
+
+func map_insert(map, key, value) {
+    var first = map.head.succ;
+    var exist = false;
+    while first.succ != null {
+        if first.data[0] == key {
+            first.data = [key, value];
+            exist = true;
+        }
+        first = first.succ;
+    }
+    if not(exist) {
+        linked_list_append(map, [key, value]);
+    }
+}
+
+func map_query(map, key) {
+    var first = map.head.succ;
+    while first.succ != null {
+        if first.data[0] == key {
+            return [true, first.data[1]];
+        }
+        first = first.succ;
+    }
+    return [false, null];
+}
+
+// Infrastructure - very basic library
+
+func and(a, b) {
+    if (a == false) {
+        return false;
+    }
+    return b == true;
+}
+
+func or(a, b) {
+    if (a == true) {
+        return true;
+    }
+    return b == true;
+}
+
+func not(a) {
+    return a == false;
+}
+
+func any(list) {
+    var i = 0;
+    while i < size(list) {
+        if list[i] {
+            return true;
+        }
+        i = i + 1;
+    }
+    return false;
+}
+
+func all(list) {
+    var i = 0;
+    while i < size(list) {
+        if not(list[i]) {
+            return false;
+        }
+        i = i + 1;
+    }
+    return true;
+}
+
+func isalpha(ch) {
+    return or(and(ch >= "a", ch <= "z"), and(ch >= "A", ch <= "Z"));
+}
+
+func isdigit(ch) {
+    return and(ch >= "0", ch <= "9");
+}
+
+func digit_to_num(ch) {
+    if (ch == "0") { return 0; }
+    else if (ch == "1") { return 1; }
+    else if (ch == "2") { return 2; }
+    else if (ch == "3") { return 3; }
+    else if (ch == "4") { return 4; }
+    else if (ch == "5") { return 5; }
+    else if (ch == "6") { return 6; }
+    else if (ch == "7") { return 7; }
+    else if (ch == "8") { return 8; }
+    else if (ch == "9") { return 9; }
+}
+
+func isalnum(ch) {
+    return or(isalpha(ch), isdigit(ch));
+}
+
+func ord(str) {
+    return string::at(str, 0);
+}
+
+func stod(lexeme) {
+    var num = 0;
+    var len = size(lexeme);
+    var i = 0;
+    var ch = string::at(lexeme, i);
+    // stage 0: integer part
+    while i <= len - 1 {
+        ch = string::at(lexeme, i);
+        if isdigit(ch) {
+            num = num * 10 + digit_to_num(ch);
+            i = i + 1;
+        } else {
+            break;
+        }
+    }
+    if (i >= len - 1) {
+        // we've reached the end of the world.
+        return num;
+    }
+    // stage 1: decimal part
+    if (ch == ".") {
+        // then enter decimal part
+        var dec_to_dot = 1;
+        i = i + 1;
+        while i <= len - 1 {
+            ch = string::at(lexeme, i);
+            dec_to_dot = dec_to_dot * 10;
+            if isdigit(ch) {
+                num = num + digit_to_num(ch) / dec_to_dot;
+                i = i + 1;
+            } else {
+                break;
+            }
+        }
+        if i >= len - 1 {
+            // we've reached the end of the world.
+            if "" + num == "0/10" {
+                return 0.0;
+            }
+            return decimal(num);
+        }
+    }
+    // stage 2: exponential part
+    if (ch == "e") {
+        var sign = 1;
+        i = i + 1;
+        ch = string::at(lexeme, i);
+        if ch == "+" {
+            sign = 1;
+            i = i + 1;
+            ch = string::at(lexeme, i);
+        } else if ch == "-" {
+            sign = -1;
+            i = i + 1;
+            ch = string::at(lexeme, i);
+        }
+        var exp = 0;
+        while i <= len - 1 {
+            ch = string::at(lexeme, i);
+            if isdigit(ch) {
+                exp = exp * 10 + digit_to_num(ch);
+                i = i + 1;
+            } else {
+                break;
+            }
+        }
+        if "" + num != "0/10" {
+            num = decimal(num) * pow(10, (sign * exp)); // i'm tired...
+        }
+    }
+    // i don't care about what the fuck is rest just go away. fuck you
+    if ("" + num == "0/10") {
+        return 0.0;
+    }
+    return num;
+}
+
+func is_int(num) {
+    var str = "" + num;
+    var i = 0;
+    while i <= size(str) - 1 {
+        var ch = string::at(str, i);
+        if or(ch == "/", ch == ".") {
+            return false;
+        }
+        i = i + 1;
+    }
+    return true;
+}
+
+func to_int(num) {
+    var str = "" + num;
+    var i = 0;
+    var res = 0;
+    while i <= size(str) - 1 {
+        var ch = string::at(str, i);
+        if isdigit(ch) {
+            res = res * 10 + digit_to_num(ch);
+        } else {
+            break;
+        }
+        i = i + 1;
+    }
+    return res;
+}
+
+// I don't know what is this, but hey, thank you??
+func string_true() {
+    // in case you don't know, "true" is not string in lamina.
+    // we use string::sub to create a string safely.
+    // Note: use string concat ("" + true) is also OK.
+    return string::sub("-true", 1, 4);
+}
+
+func string_false() {
+    return string::sub("-false", 1, 5);
+}
+
+func string_null() {
+    return string::sub("-null", 1, 4);
+}
+
+// Lexer part
+
+// token types
+var TT_VAR = "TT_VAR";
+var TT_FUNC = "TT_FUNC";
+var TT_IF = "TT_IF";
+var TT_ELSE = "TT_ELSE";
+var TT_WHILE = "TT_WHILE";
+var TT_FOR = "TT_FOR";
+var TT_RETURN = "TT_RETURN";
+var TT_INCLUDE = "TT_INCLUDE";
+var TT_BREAK = "TT_BREAK";
+var TT_CONTINUE = "TT_CONTINUE";
+var TT_STRUCT = "TT_STRUCT";
+var TT_DEFINE = "TT_DEFINE";
+var TT_BIGINT = "TT_BIGINT";
+var TT_LOOP = "TT_LOOP";
+var TT_TRUE = "TT_TRUE";
+var TT_FALSE = "TT_FALSE";
+var TT_NULL = "TT_NULL";
+var TT_IDENTIFIER = "TT_IDENTIFIER";
+var TT_ASSIGN = "TT_ASSIGN";
+var TT_NUMBER = "TT_NUMBER";
+var TT_LPAREN = "TT_LPAREN";
+var TT_RPAREN = "TT_RPAREN";
+var TT_LBRACE = "TT_LBRACE";
+var TT_RBRACE = "TT_RBRACE";
+var TT_LAMBDA = "TT_LAMBDA";
+var TT_LBRACKET = "TT_LBRACKET";
+var TT_RBRACKET = "TT_RBRACKET";
+var TT_COMMA = "TT_COMMA";
+var TT_DOT = "TT_DOT";
+var TT_TRIPLE_DOT = "TT_TRIPLE_DOT";
+var TT_STRING = "TT_STRING";
+var TT_SEMICOLON = "TT_SEMICOLON";
+var TT_PLUS = "TT_PLUS";
+var TT_MINUS = "TT_MINUS";
+var TT_STAR = "TT_STAR";
+var TT_SLASH = "TT_SLASH";
+var TT_PERCENT = "TT_PERCENT";
+var TT_CARET = "TT_CARET";
+var TT_BANG = "TT_BANG";
+var TT_EQUAL = "TT_EQUAL";
+var TT_NOT_EQUAL = "TT_NOT_EQUAL";
+var TT_LESS = "TT_LESS";
+var TT_LESS_EQUAL = "TT_LESS_EQUAL";
+var TT_GREATER = "TT_GREATER";
+var TT_GREATER_EQUAL = "TT_GREATER_EQUAL";
+var TT_DOUBLE_COLON = "TT_DOUBLE_COLON";
+var TT_PIPE = "TT_PIPE";
+var TT_FAT_ARROW = "TT_FAT_ARROW";
+var TT_THIN_ARROW = "TT_THIN_ARROW";
+var TT_END_OF_FILE = "TT_END_OF_FILE";
+var TT_UNKNOWN = "TT_UNKNOWN";
+
+func keyword_to_token_type(keyword) {
+    if keyword == "var" { return TT_VAR; }
+    else if keyword == "func" { return TT_FUNC; }
+    else if keyword == "if" { return TT_IF; }
+    else if keyword == "else" { return TT_ELSE; }
+    else if keyword == "while" { return TT_WHILE; }
+    else if keyword == "for" { return TT_FOR; }
+    else if keyword == "return" { return TT_RETURN; }
+    else if keyword == "include" { return TT_INCLUDE; }
+    else if keyword == "break" { return TT_BREAK; }
+    else if keyword == "continue" { return TT_CONTINUE; }
+    else if keyword == "define" { return TT_DEFINE; }
+    else if keyword == "bigint" { return TT_BIGINT; }
+    else if keyword == "struct" { return TT_STRUCT; }
+    else if keyword == string_true() { return TT_TRUE; }
+    else if keyword == string_false() { return TT_FALSE; }
+    else if keyword == string_null() { return TT_NULL; }
+    else if keyword == "do" { return TT_LAMBDA; }
+    else if keyword == "loop" { return TT_LOOP; }
+    return TT_UNKNOWN;
+}
+
+struct LexerData { src = "source code here"; pos = -1; current_char = ""; };
+
+func lexer_init(source) {
+    LexerData.src = source;
+    lexer_advance();
+}
+
+func lexer_advance() {
+    LexerData.pos = LexerData.pos + 1;
+    LexerData.current_char = lexer_peek();
+}
+
+func lexer_peek() {
+    return lexer_peek_off(0);
+}
+
+func lexer_peek_off(offset) {
+    var pos = LexerData.pos;
+    var src = LexerData.src;
+    if (and(pos + offset >= 0, pos + offset < size(src))) {
+        return string::at(src, pos + offset);
+    }
+    return "";
+}
+
+// ok and now start lexing
+
+func lexer_lex_names() {
+    var start_pos = LexerData.pos;
+    var current_char = LexerData.current_char;
+    while (or(current_char == "_", isalnum(current_char))) {
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    var end_pos = LexerData.pos;
+    var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+    var type = keyword_to_token_type(lexeme);
+    if (type == TT_UNKNOWN) {
+        type = TT_IDENTIFIER;
+    }
+    return [type, lexeme];
+}
+
+func lexer_make_string(quote) {
+    // in official lamina implementation we handle escape sequences in lexing.
+    // however, that's because of C++'s convenient on dynamically creating strings. Lamina do not have this convenience.
+    // so i'm not going to handle the escape sequences at all.
+    // Lamina is actually sufficient on handling this. It's me not sufficient.
+    var start_pos = LexerData.pos;
+    lexer_advance();
+    var current_char = LexerData.current_char;
+    while (all([current_char != quote, current_char != "\r", current_char != "\n"])) {
+        if (current_char == "\\") {
+            // ignore the following escape.
+            lexer_advance();
+            current_char = LexerData.current_char;
+        }
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    if (or(current_char == " ", current_char == "\n")) {
+        // That's an unterminated string. We'll give an error using TT_UNKNOWN.
+        var end_pos = LexerData.pos;
+        var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+        return [TT_UNKNOWN, string::cat("Unterminated string `", lexeme, "` (from " + start_pos, " to " + end_pos, ")")];
+    }
+    lexer_advance();
+    var end_pos = LexerData.pos;
+    return [TT_STRING, string::sub(LexerData.src, start_pos, end_pos - start_pos)];
+}
+
+func lexer_make_numbers() {
+    var start_pos = LexerData.pos;
+    var current_char = LexerData.current_char;
+    // first skip the integer part
+    while (isdigit(current_char)) {
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    // then check whether there is a dot or e
+    if (and(current_char != ord("."), current_char != ord("e"))) {
+        // no dots, no `e`s, happy moment, yay!
+        var end_pos = LexerData.pos;
+        var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+        return [TT_NUMBER, lexeme];
+    }
+    // there is a dot or e, if it's a dot, skip it first
+    if (current_char == ord(".")) {
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    // if there is no number after a dot, then we'll report an error
+    if (and(not(isdigit(current_char)), current_char != ord("e"))) {
+        // `123.abc` what is this??
+        var end_pos = LexerData.pos;
+        var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+        return [TT_UNKNOWN, string::cat("Invalid decimal literal `", lexeme, "` (from " + start_pos, " to " + end_pos, ")")];
+    }
+    // skip decimals after dots
+    while (isdigit(current_char)) {
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    // check whether there is a `e`
+    if (current_char != ord("e")) {
+        // no `e`s waiting let's goooooo
+        var end_pos = LexerData.pos;
+        var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+        return [TT_NUMBER, lexeme];
+    }
+    // then there is a `e`.
+    lexer_advance();
+    current_char = LexerData.current_char;
+    // skip the `+` or `-` after `e`.
+    if (or(current_char == ord("+"), current_char == ord("-"))) {
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    // what if 123.456e+xx?
+    if (not(isdigit(current_char))) {
+        var end_pos = LexerData.pos;
+        var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+        return [TT_UNKNOWN, string::cat("Invalid decimal literal `", lexeme, "` (from " + start_pos, " to " + end_pos, ")")];
+    }
+    // skip the rest decimal part.
+    while (isdigit(current_char)) {
+        lexer_advance();
+        current_char = LexerData.current_char;
+    }
+    // finally ends.
+    var end_pos = LexerData.pos;
+    var lexeme = string::sub(LexerData.src, start_pos, end_pos - start_pos);
+    return [TT_NUMBER, lexeme];
+}
+
+func lexer_next_tok() {
+    var current_char = LexerData.current_char;
+    if (current_char == "") {
+        return [TT_END_OF_FILE, ""];
+    } else if (any([current_char == " ", current_char == "\t", current_char == "\n", current_char == "\r"])) {
+        lexer_advance();
+        return lexer_next_tok();
+    } else if (or(current_char == ord("_"), isalpha(current_char))) {
+        return lexer_lex_names();
+    } else if (current_char == ord("=")) {
+        lexer_advance();
+        if (lexer_peek() == ord("=")) {
+            lexer_advance();
+            return [TT_EQUAL, "=="];
+        } else if (lexer_peek() == ord(">")) {
+            lexer_advance();
+            return [TT_FAT_ARROW, "=>"];
+        }
+        return [TT_ASSIGN, "="];
+    } else if (current_char == ord("(")) {
+        lexer_advance();
+        return [TT_LPAREN, "("];
+    } else if (current_char == ord(")")) {
+        lexer_advance();
+        return [TT_RPAREN, ")"];
+    } else if (current_char == ord("{")) {
+        lexer_advance();
+        return [TT_LBRACE, "{"];
+    } else if (current_char == ord("[")) {
+        lexer_advance();
+        return [TT_LBRACKET, "["];
+    } else if (current_char == ord("]")) {
+        lexer_advance();
+        return [TT_RBRACKET, "]"];
+    } else if (current_char == ord("}")) {
+        lexer_advance();
+        return [TT_RBRACE, "}"];
+    } else if (current_char == ord(",")) {
+        lexer_advance();
+        return [TT_COMMA, ","];
+    } else if (current_char == ord(".")) {
+        if (isdigit(lexer_peek_off(1))) {
+            return lexer_make_numbers();
+        } else if (and(lexer_peek_off(1) == ".", lexer_peek_off(2) == ".")) {
+            lexer_advance();
+            lexer_advance();
+            lexer_advance();
+            return [TT_TRIPLE_DOT, "..."];
+        }
+        lexer_advance();
+        return [TT_DOT, "."];
+    } else if (current_char == ord(";")) {
+        lexer_advance();
+        return [TT_SEMICOLON, ";"];
+    } else if (current_char == ord("/")) {
+        if (lexer_peek_off(1) == ord("/")) {
+            while (and(current_char != "\n", current_char != "")) {
+                lexer_advance();
+                current_char = LexerData.current_char;
+            }
+            return lexer_next_tok();
+        } else if (lexer_peek_off(1) == ord("*")) {
+            lexer_advance();
+            lexer_advance();
+            while (or(lexer_peek() != "*", lexer_peek_off(1) != "/")) {
+                if (lexer_peek() == "") {
+                    return [TT_UNKNOWN, "Unterminated multi-line comment"];
+                }
+                lexer_advance();
+            }
+            lexer_advance();
+            lexer_advance();
+            return lexer_next_tok();
+        }
+        lexer_advance();
+        return [TT_SLASH, "/"];
+    } else if (current_char == ord("+")) {
+        lexer_advance();
+        return [TT_PLUS, "+"];
+    } else if (current_char == ord("-")) {
+        lexer_advance();
+        if (lexer_peek() == ">") {
+            lexer_advance();
+            return [TT_THIN_ARROW, "->"];
+        }
+        return [TT_MINUS, "-"];
+    } else if (current_char == ord("*")) {
+        lexer_advance();
+        return [TT_STAR, "*"];
+    } else if (current_char == ord("%")) {
+        lexer_advance();
+        return [TT_PERCENT, "%"];
+    } else if (current_char == ord("^")) {
+        lexer_advance();
+        return [TT_CARET, "^"];
+    } else if (current_char == ord("!")) {
+        lexer_advance();
+        if (lexer_peek() == ord("=")) {
+            lexer_advance();
+            return [TT_NOT_EQUAL, "!="];
+        }
+        return [TT_BANG, "!"];
+    } else if (current_char == ord("<")) {
+        lexer_advance();
+        if (lexer_peek() == ord("=")) {
+            lexer_advance();
+            return [TT_LESS_EQUAL, "<="];
+        }
+        return [TT_LESS, "<"];
+    } else if (current_char == ord(">")) {
+        lexer_advance();
+        if (lexer_peek() == ord("=")) {
+            lexer_advance();
+            return [TT_GREATER_EQUAL, ">="];
+        }
+        return [TT_GREATER, ">"];
+    } else if (and(current_char == ":", lexer_peek_off(1) == ":")) {
+        lexer_advance();
+        lexer_advance();
+        return [TT_DOUBLE_COLON, "::"];
+    } else if (current_char == "|") {
+        return [TT_PIPE, "|"];
+    } else if (or(current_char == ord("'"), current_char == ord('"'))) {
+        return lexer_make_string(current_char);
+    } else if (isdigit(current_char)) {
+        return lexer_make_numbers();
+    } else {
+        lexer_advance();
+        return [TT_UNKNOWN, string::cat("Unexpected character `", current_char, "`.")];
+    }
+}
+
+// Compiler-VM Bridge
+// values
+
+var VALUE_NUMBER = 0;
+var VALUE_BOOL = 1;
+var VALUE_NULL = 2;
+var VALUE_STRING = 3;
+var VALUE_FUNCTION = 4;
+var VALUE_NATIVE = 5;
+var VALUE_LIST = 6;
+var VALUE_STRUCT = 7;
+
+var FUNCTION_FUNC = 0;
+var FUNCTION_SCRIPT = 1;
+
+func func_val_inner() {
+    struct FunctionVal { arity = 0; name = "<script>"; chunk = chunk_create(); };
+    return FunctionVal;
+}
+
+func native_wrap(name, fn) {
+    struct NativeFn { name = name; fn = fn; };
+    return value_create(VALUE_NATIVE, NativeFn);
+}
+
+func value_create(type, value) {
+    struct Value { type = type; value = value; };
+    return Value;
+}
+
+func value_equal(a, b) {
+    if a.type != b.type {
+        return false;
+    }
+    return a.value == b.value;
+}
+
+func value_tostring(a) {
+    if a == null {
+        return "";
+    } else if a.type == VALUE_STRING {
+        return a.value;
+    } else if a.type == VALUE_LIST {
+        var res = "[";
+        var node = a.value.head.succ;
+        while node.succ != null {
+            res = string::cat(res, value_tostring(node.data));
+            if node.succ.succ != null {
+                res = string::cat(res, ", ");
+            }
+            node = node.succ;
+        }
+        res = string::cat(res, "]");
+        return res;
+    } else if a.type == VALUE_STRUCT {
+        var res = "{";
+        var node = a.value.head.succ;
+        while node.succ != null {
+            res = string::cat(res, node.data[0], " = ", value_tostring(node.data[1]));
+            if node.succ.succ != null {
+                res = string::cat(res, ", ");
+            }
+            node = node.succ;
+        }
+        res = string::cat(res, "}");
+        return res;
+    } else if a.type == VALUE_NULL {
+        return string_null();
+    } else if a.type == VALUE_FUNCTION {
+        return string::cat("<function ", a.value.name, ">");
+    } else if a.type == VALUE_NATIVE {
+        return string::cat("<native function ", a.value.name, ">");
+    } else {
+        return "" + a.value;
+    }
+}
+
+func value_is_false(value) {
+    return or(value.type == VALUE_NULL, and(value.type == VALUE_BOOL, value.value == false));
+}
+
+func print_value(value) {
+    print(value_tostring(value));
+}
+
+// opcodes
+
+var OP_CONSTANT = 0;
+var OP_EXIT = 1;
+var OP_SHOW = 2;
+var OP_ADD = 3;
+var OP_SUB = 4;
+var OP_MUL = 5;
+var OP_DIV = 6;
+var OP_MOD = 7;
+var OP_NEG = 8;
+var OP_TRUE = 9;
+var OP_FALSE = 10;
+var OP_NULL = 11;
+var OP_EQ = 12;
+var OP_NE = 13;
+var OP_GT = 14;
+var OP_LT = 15;
+var OP_GE = 16;
+var OP_LE = 17;
+var OP_GET_INDEX = 18;
+var OP_MAKE_LIST = 19;
+var OP_POP = 20;
+var OP_GET_GLOBAL = 21;
+var OP_SET_GLOBAL = 22;
+var OP_DEFINE_GLOBAL = 23;
+var OP_GET_LOCAL = 24;
+var OP_SET_LOCAL = 25;
+var OP_GET_MEMBER = 26;
+var OP_SET_MEMBER = 27;
+var OP_MAKE_STRUCT = 28;
+var OP_JUMP_IF_FALSE = 29;
+var OP_JUMP = 30;
+var OP_LOOP = 31;
+var OP_CALL = 32;
+var OP_RETURN = 33;
+
+// chunks
+func chunk_create() {
+    struct Chunk { constant_pool = linked_list_create(); opcodes = linked_list_create(); };
+    return Chunk;
+}
+
+func chunk_add_constant(chunk, constant) {
+    linked_list_append(chunk.constant_pool, constant);
+    return linked_list_length(chunk.constant_pool) - 1;
+}
+
+func chunk_add_op(chunk, opcode) {
+    linked_list_append(chunk.opcodes, opcode);
+}
+
+// Compiler part
+// precedence table
+
+var PREC_NONE = 0;
+var PREC_ASSIGN = 1;
+var PREC_COMPARSION = 2;
+var PREC_PLUSMINUS = 3;
+var PREC_MULDIVMOD = 4;
+var PREC_POWER = 5;
+var PREC_UNARY = 6;
+var PREC_FACTORIAL = 7;
+var PREC_CALL = 8;
+var PREC_PRIMARY = 9;
+
+func compaux_make_comma_list(compiler, end_mark) {
+    var element_count = 0;
+    if compiler.current[0] != end_mark {
+        compfunc_expression(compiler);
+        element_count = element_count + 1;
+        while compiler_match(compiler, TT_COMMA) {
+            compfunc_expression(compiler);
+            element_count = element_count + 1;
+        }
+    }
+    compiler_consume(compiler, end_mark);
+    return element_count;
+}
+
+func compfunc_list_literal(compiler, can_assign) {
+    var len = compaux_make_comma_list(compiler, TT_RBRACKET);
+    compiler_emit_op(compiler, OP_MAKE_LIST);
+    compiler_emit_op(compiler, len);
+}
+
+func compfunc_index(compiler, can_assign) {
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_RBRACKET);
+    compiler_emit_op(compiler, OP_GET_INDEX);
+}
+
+func compfunc_string(compiler, can_assign) {
+    // we're going to remove the quotes and do unescape here. very annoying actually
+    var src_str = compiler.previous[1];
+    // remove quotes
+    src_str = string::sub(src_str, 1, size(src_str) - 2);
+    // now we shall start unescape
+    // we're going to use a linked list (XDDDDD) to do that for precise result.
+    var unescape_ll = linked_list_create();
+    var len = size(src_str);
+    var i = 0;
+    while i <= len - 1 {
+        ch = string::at(src_str, i);
+        if ch == "\\" {
+            // that's exactly what we wanted.
+            i = i + 1;
+            ch = string::at(src_str, i);
+            if ch == "n" {
+                linked_list_append(unescape_ll, "\n");
+            } else if ch == "t" {
+                linked_list_append(unescape_ll, "\t");
+            } else if ch == "r" {
+                linked_list_append(unescape_ll, "\r");
+            } else if ch == "'" {
+                linked_list_append(unescape_ll, "'");
+            } else if ch == '"' {
+                linked_list_append(unescape_ll, '"');
+            } else if ch == "\\" {
+                linked_list_append(unescape_ll, "\\");
+            } else {
+                linked_list_append(unescape_ll, "\\");
+                linked_list_append(unescape_ll, ch);
+            }
+        } else {
+            linked_list_append(unescape_ll, ch);
+        }
+        i = i + 1;
+    }
+    // concat it back
+    src_str = "";
+    var n = linked_list_length(unescape_ll);
+    i = 0;
+    while i <= n - 1 {
+        src_str = string::cat(src_str, linked_list_nth(unescape_ll, i).data);
+        i = i + 1;
+    }
+    compiler_emit_constant(compiler, value_create(VALUE_STRING, src_str));
+}
+
+func compfunc_literal(compiler, can_assign) {
+    if compiler.previous[0] == TT_TRUE {
+        compiler_emit_op(compiler, OP_TRUE);
+    } else if compiler.previous[0] == TT_FALSE {
+        compiler_emit_op(compiler, OP_FALSE);
+    } else if compiler.previous[0] == TT_NULL {
+        compiler_emit_op(compiler, OP_NULL);
+    }
+}
+
+func compfunc_number(compiler, can_assign) {
+    var lexeme = compiler.previous[1];
+    compiler_emit_constant(compiler, value_create(VALUE_NUMBER, stod(lexeme)));
+}
+
+func compfunc_grouping(compiler, can_assign) {
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_RPAREN);
+}
+
+func compfunc_unary(compiler, can_assign) {
+    var op = compiler.previous[0];
+    compaux_parse_prec(compiler, PREC_UNARY);
+    if op == TT_MINUS {
+        compiler_emit_op(compiler, OP_NEG);
+    }
+}
+
+func compfunc_binary(compiler, can_assign) {
+    var op = compiler.previous[0];
+    var rule = compiler_get_rule(compiler, op);
+    compaux_parse_prec(compiler, rule[3] + 1);
+    if op == TT_PLUS {
+        compiler_emit_op(compiler, OP_ADD);
+    } else if op == TT_MINUS {
+        compiler_emit_op(compiler, OP_SUB);
+    } else if op == TT_STAR {
+        compiler_emit_op(compiler, OP_MUL);
+    } else if op == TT_SLASH {
+        compiler_emit_op(compiler, OP_DIV);
+    } else if op == TT_PERCENT {
+        compiler_emit_op(compiler, OP_MOD);
+    } else if op == TT_EQUAL {
+        compiler_emit_op(compiler, OP_EQ);
+    } else if op == TT_NOT_EQUAL {
+        compiler_emit_op(compiler, OP_NE);
+    } else if op == TT_GREATER {
+        compiler_emit_op(compiler, OP_GT);
+    } else if op == TT_GREATER_EQUAL {
+        compiler_emit_op(compiler, OP_GE);
+    } else if op == TT_LESS {
+        compiler_emit_op(compiler, OP_LT);
+    } else if op == TT_LESS_EQUAL {
+        compiler_emit_op(compiler, OP_LE);
+    }
+}
+
+func compaux_resolve_local(state, name) {
+    var node = state.locals.tail.pred;
+    var i = state.local_count - 1;
+    while node.pred != null {
+        var local = node.data;
+        if local[0][1] == name[1] {
+            return i;
+        }
+        node = node.pred;
+        i = i - 1;
+    }
+    return -1;
+}
+
+func compaux_named_variable(compiler, name, can_assign) {
+    var arg = compaux_resolve_local(compiler.state, name);
+    var get_op = 0;
+    var set_op = 0;
+    if arg != -1 {
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
+    } else {
+        arg = chunk_add_constant(compiler_compiling_chunk(compiler), name[1]);
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
+    }
+    if (and(can_assign, compiler_match(compiler, TT_ASSIGN))) {
+        compfunc_expression(compiler);
+        compiler_emit_op(compiler, set_op);
+    } else {
+        compiler_emit_op(compiler, get_op);
+    }
+    compiler_emit_op(compiler, arg);
+}
+
+func compfunc_variable(compiler, can_assign) {
+    compaux_named_variable(compiler, compiler.previous, can_assign);
+}
+
+func compfunc_struct_literal(compiler, can_assign) {
+    var count = 0;
+    while not(compiler_match(compiler, TT_RBRACE)) {
+        compiler_consume(compiler, TT_IDENTIFIER);
+        var name = compiler.previous[1];
+        compiler_consume(compiler, TT_ASSIGN);
+        compfunc_expression(compiler);
+        compiler_consume(compiler, TT_SEMICOLON);
+        compiler_emit_constant(compiler, value_create(VALUE_STRING, name));
+        count = count + 1;
+    }
+    compiler_emit_op(compiler, OP_MAKE_STRUCT);
+    compiler_emit_op(compiler, count);
+}
+
+func compfunc_struct_member(compiler, can_assign) {
+    compiler_consume(compiler, TT_IDENTIFIER);
+    var arg = chunk_add_constant(compiler_compiling_chunk(compiler), compiler.previous[1]);
+    if (and(can_assign, compiler_match(compiler, TT_ASSIGN))) {
+        compfunc_expression(compiler);
+        compiler_emit_op(compiler, OP_SET_MEMBER);
+    } else {
+        compiler_emit_op(compiler, OP_GET_MEMBER);
+    }
+    compiler_emit_op(compiler, arg);
+}
+
+func compfunc_call(compiler, can_assign) {
+    var count = compaux_make_comma_list(compiler, TT_RPAREN);
+    compiler_emit_op(compiler, OP_CALL);
+    compiler_emit_op(compiler, count);
+}
+
+func compaux_parse_prec(compiler, precedence) {
+    compiler_advance(compiler);
+    var prefix_rule = compiler_get_rule(compiler, compiler.previous[0])[1];
+    if prefix_rule == null {
+        print("Compilation error: expected expression");
+        return null;
+    }
+    var can_assign = precedence <= PREC_ASSIGN;
+    prefix_rule(compiler, can_assign);
+    while (precedence <= compiler_get_rule(compiler, compiler.current[0])[3]) {
+        compiler_advance(compiler);
+        var infix_rule = compiler_get_rule(compiler, compiler.previous[0])[2];
+        infix_rule(compiler, can_assign);
+    }
+
+    if (and(can_assign, compiler_match(compiler, TT_ASSIGN))) {
+        print("Compilation error: invalid assignment target");
+    }
+}
+
+func compfunc_expression(compiler) {
+    compaux_parse_prec(compiler, PREC_ASSIGN);
+}
+
+func compfunc_return_stmt(compiler) {
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_SEMICOLON);
+    compiler_emit_op(compiler, OP_RETURN);
+}
+
+func compfunc_expr_stmt(compiler) {
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_SEMICOLON);
+    compiler_emit_op(compiler, OP_POP);
+}
+
+func compaux_add_local(compiler, tok) {
+    linked_list_append(compiler.state.locals, [tok, compiler.state.scope_depth]);
+    compiler.state.local_count = compiler.state.local_count + 1;
+}
+
+func compaux_declare_variable(compiler) {
+    if compiler.state.scope_depth == 0 {
+        return null;
+    }
+
+    var node = compiler.state.locals.tail.pred;
+    var name = compiler.previous[1];
+    while node.pred != null {
+        var local = node.data;
+        if local[1] < compiler.state.scope_depth {
+            break;
+        }
+
+        if name == local[0][1] {
+            print("Compilation error: redefinition of variable:", name);
+        }
+
+        node = node.pred;
+    }
+
+    compaux_add_local(compiler, compiler.previous);
+}
+
+func compaux_parse_variable(compiler) {
+    compiler_consume(compiler, TT_IDENTIFIER);
+    compaux_declare_variable(compiler);
+    if compiler.state.scope_depth > 0 {
+        return 0;
+    }
+    return chunk_add_constant(compiler_compiling_chunk(compiler), compiler.previous[1]);
+}
+
+func compaux_define_variable(compiler, global) {
+    if compiler.state.scope_depth > 0 {
+        return null;
+    }
+    compiler_emit_op(compiler, OP_DEFINE_GLOBAL);
+    compiler_emit_op(compiler, global);
+}
+
+func compfunc_var_decl(compiler) {
+    var global = compaux_parse_variable(compiler);
+
+    if compiler_match(compiler, TT_ASSIGN) {
+        compfunc_expression(compiler);
+    } else {
+        compiler_emit_op(compiler, OP_NULL);
+    }
+    compiler_consume(compiler, TT_SEMICOLON);
+    compaux_define_variable(compiler, global);
+}
+
+func compaux_begin_scope(compiler) {
+    compiler.state.scope_depth = compiler.state.scope_depth + 1;
+}
+
+func compaux_end_scope(compiler) {
+    compiler.state.scope_depth = compiler.state.scope_depth - 1;
+    while (compiler.state.local_count > 0) {
+        if compiler.state.locals.tail.pred.data[1] > compiler.state.scope_depth {
+            compiler_emit_op(compiler, OP_POP);
+            compiler.state.local_count = compiler.state.local_count - 1;
+            compiler.state.locals.tail.pred.pred.succ = compiler.state.locals.tail;
+            compiler.state.locals.tail.pred = compiler.state.locals.tail.pred.pred;
+        }
+        if compiler.state.local_count <= 0 {
+            break;
+        }
+        if compiler.state.locals.tail.pred.data[1] <= compiler.state.scope_depth {
+            break;
+        }
+    }
+}
+
+func compfunc_block(compiler) {
+    while (and(not(compiler.current[0] == TT_RBRACE), not(compiler.current[0] == TT_END_OF_FILE))) {
+        compfunc_statement(compiler);
+    }
+    compiler_consume(compiler, TT_RBRACE);
+}
+
+func compfunc_struct_statement(compiler) {
+    var global = compaux_parse_variable(compiler);
+    compiler_consume(compiler, TT_LBRACE);
+    compfunc_struct_literal(compiler, false);
+    compiler_consume(compiler, TT_SEMICOLON);
+    compaux_define_variable(compiler, global);
+}
+
+func compfunc_if_statement(compiler) {
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_LBRACE);
+    var then_jump = compiler_emit_jump(compiler, OP_JUMP_IF_FALSE);
+    compiler_emit_op(compiler, OP_POP);
+    compaux_begin_scope(compiler);
+    compfunc_block(compiler);
+    var else_jump = compiler_emit_jump(compiler, OP_JUMP);
+    compaux_end_scope(compiler);
+    compiler_patch_jump(compiler, then_jump);
+    compiler_emit_op(compiler, OP_POP);
+    if compiler_match(compiler, TT_ELSE) {
+        if compiler_match(compiler, TT_IF) {
+            compfunc_if_statement(compiler);
+        } else {
+            compiler_consume(compiler, TT_LBRACE);
+            compaux_begin_scope(compiler);
+            compfunc_block(compiler);
+            compaux_end_scope(compiler);
+        }
+    }
+    compiler_patch_jump(compiler, else_jump);
+}
+
+func compaux_begin_loop(compiler) {
+    linked_list_append(compiler.state.current_loop_begin, linked_list_length(compiler_compiling_chunk(compiler).opcodes));
+    compiler.state.loop_depth = compiler.state.loop_depth + 1;
+}
+
+func compaux_end_loop(compiler) {
+    compiler.state.loop_depth = compiler.state.loop_depth - 1;
+    compiler.state.current_loop_begin.tail.pred.pred.succ = compiler.state.current_loop_begin.tail;
+    compiler.state.current_loop_begin.tail.pred = compiler.state.current_loop_begin.tail.pred.pred;
+    while compiler.state.break_infos.tail.pred.pred != null {
+        if compiler.state.break_infos.tail.pred.data[1] > compiler.state.loop_depth {
+            compiler_patch_jump(compiler, compiler.state.break_infos.tail.pred.data[0]);
+            compiler.state.break_infos.tail.pred.pred.succ = compiler.state.break_infos.tail;
+            compiler.state.break_infos.tail.pred = compiler.state.break_infos.tail.pred.pred;
+        } else {
+            break;
+        }
+    }
+}
+
+func compfunc_while_statement(compiler) {
+    compaux_begin_loop(compiler);
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_LBRACE);
+    var exit_jump = compiler_emit_jump(compiler, OP_JUMP_IF_FALSE);
+    compiler_emit_op(compiler, OP_POP);
+    compaux_begin_scope(compiler);
+    compfunc_block(compiler);
+    compaux_end_scope(compiler);
+    compiler_emit_loop(compiler, compiler.state.current_loop_begin.tail.pred.data);
+    compiler_patch_jump(compiler, exit_jump);
+    compiler_emit_op(compiler, OP_POP);
+    compaux_end_loop(compiler);
+}
+
+func compfunc_loop_statement(compiler) {
+    compaux_begin_scope(compiler);
+    compfunc_expression(compiler);
+    compiler_consume(compiler, TT_LBRACE);
+    compaux_add_local(compiler, [TT_END_OF_FILE, ""]);
+    var count_slot = compiler.state.local_count - 1;
+    compaux_begin_loop(compiler);
+    compiler_emit_op(compiler, OP_GET_LOCAL);
+    compiler_emit_op(compiler, count_slot);
+    compiler_emit_constant(compiler, value_create(VALUE_NUMBER, 1));
+    compiler_emit_op(compiler, OP_SUB);
+    compiler_emit_op(compiler, OP_SET_LOCAL);
+    compiler_emit_op(compiler, count_slot);
+    compiler_emit_constant(compiler, value_create(VALUE_NUMBER, 0));
+    compiler_emit_op(compiler, OP_GE);
+    var exit_jump = compiler_emit_jump(compiler, OP_JUMP_IF_FALSE);
+    compiler_emit_op(compiler, OP_POP);
+    compfunc_block(compiler);
+    compiler_emit_loop(compiler, compiler.state.current_loop_begin.tail.pred.data);
+    compaux_end_loop(compiler);
+    compiler_patch_jump(compiler, exit_jump);
+    compiler_emit_op(compiler, OP_POP);
+    compaux_end_scope(compiler);
+}
+
+func compfunc_break_statement(compiler) {
+    if compiler.state.loop_depth == 0 {
+        print("Compilation error: `break` occured in global scope");
+    } else {
+        linked_list_append(compiler.state.break_infos, [compiler_emit_jump(compiler, OP_JUMP), compiler.state.loop_depth]);
+        compiler_consume(compiler, TT_SEMICOLON);
+    }
+}
+
+func compfunc_continue_statement(compiler) {
+    compiler_emit_loop(compiler, compiler.state.current_loop_begin.tail.pred.data);
+}
+
+func compaux_function(compiler, func_type) {
+    var new_compiler = compiler_state_create();
+    new_compiler.type = func_type;
+    new_compiler.enclosing = compiler.state;
+    new_compiler.function.name = compiler.previous[1];
+    compiler.state = new_compiler;
+    compaux_begin_scope(compiler);
+    compaux_add_local(compiler, [TT_END_OF_FILE, ""]);
+    compiler_consume(compiler, TT_LPAREN);
+    if compiler.current[0] != TT_RPAREN {
+        compiler.state.function.arity = compiler.state.function.arity + 1;
+        var constant = compaux_parse_variable(compiler);
+        compaux_define_variable(compiler, constant);
+        while compiler_match(compiler, TT_COMMA) {
+            compiler.state.function.arity = compiler.state.function.arity + 1;
+            var constant = compaux_parse_variable(compiler);
+            compaux_define_variable(compiler, constant);
+        }
+    }
+    compiler_consume(compiler, TT_RPAREN);
+    compiler_consume(compiler, TT_LBRACE);
+    compfunc_block(compiler);
+    compiler_emit_op(compiler, OP_NULL);
+    compiler_emit_op(compiler, OP_RETURN);
+    var func_val = compiler.state.function;
+    compiler.state = compiler.state.enclosing;
+    compiler_emit_constant(compiler, value_create(VALUE_FUNCTION, func_val));
+}
+
+func compfunc_func_decl(compiler) {
+    var global = compaux_parse_variable(compiler);
+    compaux_function(compiler, FUNCTION_FUNC);
+    compaux_define_variable(compiler, global);
+}
+
+func compfunc_statement(compiler) {
+    if (compiler_match(compiler, TT_RETURN)) {
+        compfunc_return_stmt(compiler);
+    } else if (compiler_match(compiler, TT_VAR)) {
+        compfunc_var_decl(compiler);
+    } else if (compiler_match(compiler, TT_SEMICOLON)) {
+        return null;
+    } else if (compiler_match(compiler, TT_STRUCT)) {
+        compfunc_struct_statement(compiler);
+    } else if (compiler_match(compiler, TT_IF)) {
+        compfunc_if_statement(compiler);
+    } else if (compiler_match(compiler, TT_WHILE)) {
+        compfunc_while_statement(compiler);
+    } else if (compiler_match(compiler, TT_LOOP)) {
+        compfunc_loop_statement(compiler);
+    } else if (compiler_match(compiler, TT_BREAK)) {
+        compfunc_break_statement(compiler);
+    } else if (compiler_match(compiler, TT_CONTINUE)) {
+        compfunc_continue_statement(compiler);
+    } else if (compiler_match(compiler, TT_FUNC)) {
+        compfunc_func_decl(compiler);
+    } else {
+        compfunc_expr_stmt(compiler);
+    }
+}
+
+func compiler_state_create() {
+    struct CompilerState { enclosing = null; function = func_val_inner(); type = FUNCTION_SCRIPT; locals = linked_list_create(); local_count = 0; scope_depth = 0; loop_depth = 0; current_loop_begin = linked_list_create(); break_infos = linked_list_create(); };
+    return CompilerState;
+}
+
+func compiler_create() {
+    struct Compiler { previous = null; current = null; parse_rules = null; state = compiler_state_create(); };
+    Compiler.parse_rules = linked_list_create();
+    linked_list_append(Compiler.parse_rules, [TT_NUMBER, compfunc_number, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_PLUS, null, compfunc_binary, PREC_PLUSMINUS]);
+    linked_list_append(Compiler.parse_rules, [TT_MINUS, compfunc_unary, compfunc_binary, PREC_PLUSMINUS]);
+    linked_list_append(Compiler.parse_rules, [TT_STAR, null, compfunc_binary, PREC_MULDIVMOD]);
+    linked_list_append(Compiler.parse_rules, [TT_SLASH, null, compfunc_binary, PREC_MULDIVMOD]);
+    linked_list_append(Compiler.parse_rules, [TT_PERCENT, null, compfunc_binary, PREC_MULDIVMOD]);
+    linked_list_append(Compiler.parse_rules, [TT_LPAREN, compfunc_grouping, compfunc_call, PREC_CALL]);
+    linked_list_append(Compiler.parse_rules, [TT_RPAREN, null, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_TRUE, compfunc_literal, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_FALSE, compfunc_literal, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_NULL, compfunc_literal, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_EQUAL, null, compfunc_binary, PREC_COMPARSION]);
+    linked_list_append(Compiler.parse_rules, [TT_NOT_EQUAL, null, compfunc_binary, PREC_COMPARSION]);
+    linked_list_append(Compiler.parse_rules, [TT_GREATER, null, compfunc_binary, PREC_COMPARSION]);
+    linked_list_append(Compiler.parse_rules, [TT_GREATER_EQUAL, null, compfunc_binary, PREC_COMPARSION]);
+    linked_list_append(Compiler.parse_rules, [TT_LESS, null, compfunc_binary, PREC_COMPARSION]);
+    linked_list_append(Compiler.parse_rules, [TT_LESS_EQUAL, null, compfunc_binary, PREC_COMPARSION]);
+    linked_list_append(Compiler.parse_rules, [TT_STRING, compfunc_string, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_LBRACKET, compfunc_list_literal, compfunc_index, PREC_CALL]);
+    linked_list_append(Compiler.parse_rules, [TT_RBRACKET, null, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_IDENTIFIER, compfunc_variable, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_LBRACE, compfunc_struct_literal, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_RBRACE, null, null, PREC_NONE]);
+    linked_list_append(Compiler.parse_rules, [TT_DOT, null, compfunc_struct_member, PREC_CALL]);
+    compaux_add_local(Compiler, [TT_END_OF_FILE, ""]);
+    return Compiler;
+}
+
+func compiler_compiling_chunk(compiler) {
+    return compiler.state.function.chunk;
+}
+
+func compiler_advance(compiler) {
+    compiler.previous = compiler.current;
+    while true {
+        compiler.current = lexer_next_tok();
+        if (compiler.current[0] != TT_UNKNOWN) {
+            break;
+        }
+        print("Compilation error:", compiler.current[1]);
+    }
+}
+
+func compiler_match(compiler, tokentype) {
+    if compiler.current[0] == tokentype {
+        compiler_advance(compiler);
+        return true;
+    }
+    return false;
+}
+
+func compiler_consume(compiler, tokentype) {
+    if compiler.current[0] == tokentype {
+        compiler_advance(compiler);
+        return null;
+    }
+    print("Compilation error: expected token", tokentype, "but got", compiler.current[0]);
+}
+
+func compiler_emit_op(compiler, op) {
+    chunk_add_op(compiler_compiling_chunk(compiler), op);
+}
+
+func compiler_emit_constant(compiler, constant) {
+    var index = chunk_add_constant(compiler_compiling_chunk(compiler), constant);
+    compiler_emit_op(compiler, OP_CONSTANT);
+    compiler_emit_op(compiler, index);
+}
+
+func compiler_emit_jump(compiler, op) {
+    compiler_emit_op(compiler, op);
+    compiler_emit_op(compiler, 0);
+    return linked_list_length(compiler_compiling_chunk(compiler).opcodes) - 1;
+}
+
+func compiler_patch_jump(compiler, jump_index) {
+    var off = linked_list_length(compiler_compiling_chunk(compiler).opcodes) - 1 - jump_index;
+    linked_list_nth(compiler_compiling_chunk(compiler).opcodes, jump_index).data = off;
+}
+
+func compiler_emit_loop(compiler, loop_start) {
+    compiler_emit_op(compiler, OP_LOOP);
+    var off = linked_list_length(compiler_compiling_chunk(compiler).opcodes) - loop_start + 1;
+    compiler_emit_op(compiler, off);
+}
+
+func compiler_compile(compiler) {
+    compiler_advance(compiler);
+    while not(compiler_match(compiler, TT_END_OF_FILE)) {
+        compfunc_statement(compiler);
+    }
+    compiler_emit_op(compiler, OP_EXIT);
+    return compiler.state.function;
+}
+
+func compiler_get_rule(compiler, tokentype) {
+    var node = compiler.parse_rules.head.succ;
+    while node.succ != null {
+        var ith = node.data;
+        if (ith[0] == tokentype) {
+            return ith;
+        }
+        node = node.succ;
+    }
+    return [tokentype, null, null, PREC_NONE];
+}
+
+// VM
+func frame_create() {
+    struct CallFrame { function = null; ip = 0; stack_begin_pos = 0; };
+    return CallFrame;
+}
+
+func vm_create() {
+    struct VM { frames = linked_list_create(); stack = linked_list_create(); globals = map_create(); };
+    return VM;
+}
+
+func vm_push(vm, data) {
+    linked_list_append(vm.stack, data);
+}
+
+func vm_pop(vm) {
+    var stack_top = vm.stack.tail.pred.data;
+    vm.stack.tail.pred.pred.succ = vm.stack.tail;
+    vm.stack.tail.pred = vm.stack.tail.pred.pred;
+    return stack_top;
+}
+
+func vm_peek(vm, count) {
+    var stack_top = vm.stack.tail.pred;
+    while count > 0 {
+        stack_top = stack_top.pred;
+        count = count - 1;
+    }
+    return stack_top.data;
+}
+
+func vm_create_frame(vm, function, argc) {
+    var frame = frame_create();
+    frame.function = function;
+    frame.ip = -1;
+    frame.stack_begin_pos = linked_list_length(vm.stack) - 1 - argc;
+    linked_list_append(vm.frames, frame);
+    return true;
+}
+
+func vm_call_value(vm, value, argc) {
+    if value.type == VALUE_FUNCTION {
+        return vm_create_frame(vm, value.value, argc);
+    } else if value.type == VALUE_NATIVE {
+        var fn = value.value.fn;
+        var args = linked_list_create();
+        var stacktop = vm.stack.tail.pred;
+        while argc > 0 {
+            linked_list_node_append(args.head, vm_pop(vm));
+            argc = argc - 1;
+        }
+        var result = fn(args);
+        vm_push(vm, result);
+        return true;
+    }
+    print(string::cat("Object ", value_tostring(value), " is not callable"));
+    return false;
+}
+
+func vm_next_byte(vm) {
+    var last_frame = vm.frames.tail.pred.data;
+    if (last_frame.ip + 1 < linked_list_length(last_frame.function.chunk.opcodes)) {
+        last_frame.ip = last_frame.ip + 1;
+        return linked_list_nth(last_frame.function.chunk.opcodes, last_frame.ip).data;
+    }
+    return null;
+}
+
+func vm_run(vm) {
+    var instruction = vm_next_byte(vm);
+    var frame = vm.frames.tail.pred.data;
+    while (and(instruction != OP_EXIT, instruction != null)) {
+        if (instruction == OP_CONSTANT) {
+            var const_index = vm_next_byte(vm);
+            var const = linked_list_nth(frame.function.chunk.constant_pool, const_index).data;
+            vm_push(vm, const);
+        } else if (instruction == OP_ADD) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_NUMBER, a.value + b.value));
+            } else if (or(a.type == VALUE_STRING, b.type == VALUE_STRING)) {
+                vm_push(vm, value_create(VALUE_STRING, string::cat(value_tostring(a), value_tostring(b))));
+            } else {
+                print("Cannot add", value_tostring(a), "and", value_tostring(b));
+                return null;
+            }
+        } else if (instruction == OP_SUB) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_NUMBER, a.value - b.value));
+            } else {
+                print("Cannot subtract", value_tostring(a), "and", value_tostring(b));
+                return null;
+            }
+        } else if (instruction == OP_MUL) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_NUMBER, a.value * b.value));
+            } else {
+                print("Cannot multiply", value_tostring(a), "and", value_tostring(b));
+                return null;
+            }
+        } else if (instruction == OP_DIV) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_NUMBER, a.value / b.value));
+            } else {
+                print("Cannot divide", value_tostring(a), "and", value_tostring(b));
+                return null;
+            }
+        } else if (instruction == OP_MOD) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_NUMBER, a.value % b.value));
+            } else {
+                print("Cannot modulo", value_tostring(a), "and", value_tostring(b));
+                return null;
+            }
+        } else if (instruction == OP_NEG) {
+            var a = vm_pop(vm);
+            if (a.type == VALUE_NUMBER) {
+                vm_push(vm, value_create(VALUE_NUMBER, -a.value));
+            } else {
+                print("Cannot negate", value_tostring(a));
+                return null;
+            }
+        } else if (instruction == OP_SHOW) {
+            print_value(vm_pop(vm));
+        } else if (instruction == OP_TRUE) {
+            vm_push(vm, value_create(VALUE_BOOL, true));
+        } else if (instruction == OP_FALSE) {
+            vm_push(vm, value_create(VALUE_BOOL, false));
+        } else if (instruction == OP_NULL) {
+            vm_push(vm, value_create(VALUE_NULL, null));
+        } else if (instruction == OP_EQ) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, value_create(VALUE_BOOL, value_equal(a, b)));
+        } else if (instruction == OP_NE) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            vm_push(vm, value_create(VALUE_BOOL, not(value_equal(a, b))));
+        } else if (instruction == OP_LT) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value < b.value))));
+            } else if (and(a.type == VALUE_STRING, b.type == VALUE_STRING)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value < b.value))));
+            } else if (and(a.type == VALUE_BOOL, b.type == VALUE_BOOL)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value < b.value))));
+            } else {
+                print("Cannot compare", value_tostring(a), "and", value_tostring(b));
+            }
+        } else if (instruction == OP_GT) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value > b.value))));
+            } else if (and(a.type == VALUE_STRING, b.type == VALUE_STRING)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value > b.value))));
+            } else if (and(a.type == VALUE_BOOL, b.type == VALUE_BOOL)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value > b.value))));
+            } else {
+                print("Cannot compare", value_tostring(a), "and", value_tostring(b));
+            }
+        } else if (instruction == OP_LE) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value <= b.value))));
+            } else if (and(a.type == VALUE_STRING, b.type == VALUE_STRING)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value <= b.value))));
+            } else if (and(a.type == VALUE_BOOL, b.type == VALUE_BOOL)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value <= b.value))));
+            } else {
+                print("Cannot compare", value_tostring(a), "and", value_tostring(b));
+            }
+        } else if (instruction == OP_GE) {
+            var b = vm_pop(vm);
+            var a = vm_pop(vm);
+            if (and(a.type == VALUE_NUMBER, b.type == VALUE_NUMBER)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value >= b.value))));
+            } else if (and(a.type == VALUE_STRING, b.type == VALUE_STRING)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value >= b.value))));
+            } else if (and(a.type == VALUE_BOOL, b.type == VALUE_BOOL)) {
+                vm_push(vm, value_create(VALUE_BOOL, not(not(a.value >= b.value))));
+            } else {
+                print("Cannot compare", value_tostring(a), "and", value_tostring(b));
+            }
+        } else if (instruction == OP_MAKE_LIST) {
+            var len = vm_next_byte(vm);
+            var ll = linked_list_create();
+            while len > 0 {
+                linked_list_node_append(ll.head, vm_pop(vm));
+                len = len - 1;
+            }
+            vm_push(vm, value_create(VALUE_LIST, ll));
+        } else if (instruction == OP_GET_INDEX) {
+            var index = vm_pop(vm);
+            var lhs = vm_pop(vm);
+            if and(index.type == VALUE_NUMBER, is_int(index.value)) {
+                if (lhs.type == VALUE_LIST) {
+                    vm_push(vm, linked_list_nth(lhs.value, index.value).data);
+                } else if (lhs.type == VALUE_STRING) {
+                    vm_push(vm, value_create(VALUE_STRING, string::at(lhs.value, to_int(index.value))));
+                } else {
+                    print("Type of left is not subscriptable");
+                    return null;
+                }
+            } else {
+                print("Index must be integer");
+            }
+        } else if (instruction == OP_POP) {
+            vm_pop(vm);
+        } else if (instruction == OP_DEFINE_GLOBAL) {
+            var value = vm_pop(vm);
+            var name = linked_list_nth(frame.function.chunk.constant_pool, vm_next_byte(vm)).data;
+            map_insert(vm.globals, name, value);
+        } else if (instruction == OP_GET_GLOBAL) {
+            var name = linked_list_nth(frame.function.chunk.constant_pool, vm_next_byte(vm)).data;
+            var value = map_query(vm.globals, name);
+            if value[0] == false {
+                print(string::cat("Undefined variable `", name, "`"));
+                return null;
+            }
+            vm_push(vm, value[1]);
+        } else if (instruction == OP_SET_GLOBAL) {
+            var value = vm_pop(vm);
+            var name = linked_list_nth(frame.function.chunk.constant_pool, vm_next_byte(vm)).data;
+            if map_query(vm.globals, name)[0] == false {
+                print(string::cat("Undefined variable `", name, "`"));
+                return null;
+            }
+            map_insert(vm.globals, name, value);
+            vm_push(vm, value);
+        } else if (instruction == OP_GET_LOCAL) {
+            var slot = vm_next_byte(vm);
+            vm_push(vm, linked_list_nth(vm.stack, frame.stack_begin_pos + slot).data);
+        } else if (instruction == OP_SET_LOCAL) {
+            var slot = vm_next_byte(vm);
+            var value = vm_pop(vm);
+            linked_list_nth(vm.stack, frame.stack_begin_pos + slot).data = value;
+            vm_push(vm, value);
+        } else if (instruction == OP_MAKE_STRUCT) {
+            var mapping = map_create();
+            var count = vm_next_byte(vm);
+            while count > 0 {
+                var name = vm_pop(vm);
+                var value = vm_pop(vm);
+                map_insert(mapping, name.value, value);
+                count = count - 1;
+            }
+            vm_push(vm, value_create(VALUE_STRUCT, mapping));
+        } else if (instruction == OP_GET_MEMBER) {
+            var name = linked_list_nth(frame.function.chunk.constant_pool, vm_next_byte(vm)).data;
+            var struct_lit = vm_pop(vm);
+            var value = map_query(struct_lit.value, name);
+            if value[0] == false {
+                print(string::cat("Undefined member `", name, "`"));
+                return null;
+            }
+            vm_push(vm, value[1]);
+        } else if (instruction == OP_SET_MEMBER) {
+            var name = linked_list_nth(frame.function.chunk.constant_pool, vm_next_byte(vm)).data;
+            var value = vm_pop(vm);
+            var struct_lit = vm_pop(vm);
+            map_insert(struct_lit.value, name, value);
+            vm_push(vm, value);
+        } else if (instruction == OP_JUMP_IF_FALSE) {
+            var condition = vm_pop(vm);
+            vm_push(vm, condition);
+            var offset = vm_next_byte(vm);
+            if value_is_false(condition) {
+                frame.ip = frame.ip + offset;
+            }
+        } else if (instruction == OP_JUMP) {
+            var offset = vm_next_byte(vm);
+            frame.ip = frame.ip + offset;
+        } else if (instruction == OP_LOOP) {
+            var offset = vm_next_byte(vm);
+            frame.ip = frame.ip - offset;
+        } else if (instruction == OP_CALL) {
+            var argc = vm_next_byte(vm);
+            if not(vm_call_value(vm, vm_peek(vm, argc), argc)) {
+                return null;
+            }
+            frame = vm.frames.tail.pred.data;
+        } else if (instruction == OP_RETURN) {
+            var result = vm_pop(vm);
+            vm.frames.tail.pred.pred.succ = vm.frames.tail;
+            vm.frames.tail.pred = vm.frames.tail.pred.pred;
+            if vm.frames.tail.pred.pred == null {
+                vm_pop(vm);
+                return null;
+            }
+            while linked_list_length(vm.stack) != frame.stack_begin_pos {
+                vm_pop(vm);
+            }
+            vm_push(vm, result);
+            frame = vm.frames.tail.pred.data;
+        } else {
+            print("Unknown opcode", instruction);
+        }
+        instruction = vm_next_byte(vm);
+    }
+}
+
+func disasm_chunk(chunk) {
+    var node = chunk.opcodes.head.succ;
+    var cmds = linked_list_create();
+    var step = 0;
+    while node.succ != null {
+        if node.data == OP_CONSTANT {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_CONSTANT ", "" + node.data, string::cat(" (", value_tostring(linked_list_nth(chunk.constant_pool, node.data).data),")"))]);
+            step = step + 1;
+        } else if node.data == OP_ADD {
+            linked_list_append(cmds, [step, "OP_ADD"]);
+        } else if node.data == OP_SUB {
+            linked_list_append(cmds, [step, "OP_SUB"]);
+        } else if node.data == OP_MUL {
+            linked_list_append(cmds, [step, "OP_MUL"]);
+        } else if node.data == OP_DIV {
+            linked_list_append(cmds, [step, "OP_DIV"]);
+        } else if node.data == OP_MOD {
+            linked_list_append(cmds, [step, "OP_MOD"]);
+        } else if node.data == OP_NEG {
+            linked_list_append(cmds, [step, "OP_NEG"]);
+        } else if node.data == OP_SHOW {
+            linked_list_append(cmds, [step, "OP_SHOW"]);
+        } else if node.data == OP_TRUE {
+            linked_list_append(cmds, [step, "OP_TRUE"]);
+        } else if node.data == OP_FALSE {
+            linked_list_append(cmds, [step, "OP_FALSE"]);
+        } else if node.data == OP_NULL {
+            linked_list_append(cmds, [step, "OP_NULL"]);
+        } else if node.data == OP_EQ {
+            linked_list_append(cmds, [step, "OP_EQ"]);
+        } else if node.data == OP_NE {
+            linked_list_append(cmds, [step, "OP_NE"]);
+        } else if node.data == OP_LT {
+            linked_list_append(cmds, [step, "OP_LT"]);
+        } else if node.data == OP_GT {
+            linked_list_append(cmds, [step, "OP_GT"]);
+        } else if node.data == OP_LE {
+            linked_list_append(cmds, [step, "OP_LE"]);
+        } else if node.data == OP_GE {
+            linked_list_append(cmds, [step, "OP_GE"]);
+        } else if node.data == OP_MAKE_LIST {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_MAKE_LIST ", "" + node.data)]);
+            step = step + 1;
+        } else if node.data == OP_GET_INDEX {
+            linked_list_append(cmds, [step, "OP_GET_INDEX"]);
+        } else if node.data == OP_POP {
+            linked_list_append(cmds, [step, "OP_POP"]);
+        } else if node.data == OP_DEFINE_GLOBAL {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_DEFINE_GLOBAL ", "" + node.data, string::cat(" (", linked_list_nth(chunk.constant_pool, node.data).data,")"))]);
+            step = step + 1;
+        } else if node.data == OP_GET_GLOBAL {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_GET_GLOBAL ", "" + node.data, string::cat(" (", linked_list_nth(chunk.constant_pool, node.data).data,")"))]);
+            step = step + 1;
+        } else if node.data == OP_SET_GLOBAL {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_SET_GLOBAL ", "" + node.data, string::cat(" (", linked_list_nth(chunk.constant_pool, node.data).data,")"))]);
+            step = step + 1;
+        } else if node.data == OP_GET_LOCAL {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_GET_LOCAL ", "" + node.data)]);
+            step = step + 1;
+        } else if node.data == OP_SET_LOCAL {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_SET_LOCAL ", "" + node.data)]);
+            step = step + 1;
+        } else if node.data == OP_MAKE_STRUCT {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_MAKE_STRUCT ", "" + node.data)]);
+            step = step + 1;
+        } else if node.data == OP_GET_MEMBER {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_GET_MEMBER ", "" + node.data, string::cat(" (", linked_list_nth(chunk.constant_pool, node.data).data,")"))]);
+            step = step + 1;
+        } else if node.data == OP_SET_MEMBER {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_SET_MEMBER ", "" + node.data, string::cat(" (", linked_list_nth(chunk.constant_pool, node.data).data,")"))]);
+            step = step + 1;
+        } else if node.data == OP_JUMP_IF_FALSE {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_JUMP_IF_FALSE (", "" + (step + node.data + 2), ")")]);
+            step = step + 1;
+        } else if node.data == OP_JUMP {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_JUMP (", "" + (step + node.data + 2), ")")]);
+            step = step + 1;
+        } else if node.data == OP_LOOP {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_LOOP ", "" + node.data, " (", "" + (step - node.data + 2), ")")]);
+            step = step + 1;
+        } else if node.data == OP_EXIT {
+            linked_list_append(cmds, [step, "OP_EXIT"]);
+        } else if node.data == OP_CALL {
+            node = node.succ;
+            linked_list_append(cmds, [step, string::cat("OP_CALL ", "" + node.data)]);
+            step = step + 1;
+        } else if node.data == OP_RETURN {
+            linked_list_append(cmds, [step, "OP_RETURN"]);
+        } else {
+            linked_list_append(cmds, [step, string::cat("UNKNOWN INSTRUCTION ", "" + node.data)]);
+        }
+        node = node.succ;
+        step = step + 1;
+    }
+    linked_list_traverse(cmds, print);
+}
+
+func native_print(args) {
+    print_value(linked_list_nth(args, 0).data);
+    return value_create(VALUE_NULL, null);
+}
+
+func vm_prep_native(vm) {
+    map_insert(vm.globals, "print", native_wrap("print", native_print));
+}
+
+// main program
+var src = "func fib(n) { if n <= 2 { return 1; } return fib(n - 1) + fib(n - 2); } print(fib(20));";
+lexer_init(src);
+var compiler = compiler_create();
+var func_val = compiler_compile(compiler);
+var vm = vm_create();
+vm_prep_native(vm);
+vm_push(vm, value_create(VALUE_FUNCTION, func_val));
+vm_create_frame(vm, func_val, 0);
+vm_run(vm);

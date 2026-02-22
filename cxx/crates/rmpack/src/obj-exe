@@ -1,0 +1,58 @@
+#! /bin/sh -
+
+set -x
+
+darwin_framework=(
+    -framework CoreFoundation
+    -framework CoreServices
+)
+
+include="../../../include"
+src="../../../src"
+builtin="$src/builtin"
+b=build
+cxx=$(which c++)
+jb="/var/jb"
+
+rm -rfv $b && mkdir $b
+
+$cxx -I$jb/usr/include -I$include -std=c++17 -c \
+    $src/ast.cc \
+    $src/bytecode_optimizer.cc \
+    $src/compiler.cc \
+    $src/error.cc \
+    $src/interpreter.cc \
+    $src/lexer.cc \
+    $src/optimizer.cc \
+    $src/parser.cc \
+    $src/token.cc \
+    $src/value.cc \
+    $src/value_ops.cc \
+    $src/vm.cc \
+    $src/vm_ops.cc \
+    $src/cas.cc \
+    $builtin/array.cc \
+    $builtin/buffer.cc \
+    $builtin/builtin.cc \
+    $builtin/env.cc \
+    $builtin/fs.cc \
+    $builtin/math.cc \
+    $builtin/path.cc \
+    $builtin/process.cc \
+    $builtin/random.cc \
+    $builtin/stream.cc \
+    $builtin/string.cc \
+    $builtin/time.cc \
+    $builtin/utils.cc \
+    main.cc
+
+mv *.o $b/
+
+$cxx $b/*.o \
+    -lgmp -lgmpxx \
+    -pthread \
+    "${darwin_framework[@]}" \
+    -Wl,-undefined,dynamic_lookup \
+    -o $b/rmpack
+
+ldid -Sens/ens.xml -Hsha256 -M $b/rmpack

@@ -1,9 +1,13 @@
-# Rumina
+# CRumina
 
-**WIP**
+<!--
+**-WIP**
+-->
 
-一个用 Rust 编写的 Lamina 编程语言解释器，完全兼容 Lamina 语言规范。
+一個用 C++ 重寫 rumina 項目的項目, 應該兼容 rumina
+<!-- 一个用 Rust 编写的 Lamina 编程语言解释器，完全兼容 Lamina 语言规范。-->
 
+<!-- 
 ## 项目结构
 
 Rumina 采用 Cargo workspace 结构，包含以下组件：
@@ -240,6 +244,7 @@ console.log(result2); // "2.718281828459045" (e)
 const result3 = await rumina('exp(2);');
 console.log(result3); // "7.38905609893065" (e^2)
 ```
+-->
 
 ## 文档
 
@@ -252,3 +257,4 @@ MPL-2.0
 ## 致谢
 
 [Lamina](https://github.com/Lamina-dev/Lamina)
+[Rumina](https://github.com/Hoshino-Yumetsuki/Rumina)

@@ -1,0 +1,27 @@
+#!/bin/sh -
+
+set -x # debug
+
+b=build
+jb="/var/jb"
+
+rm -rfv "$b" && mkdir "$b" || exit 1
+
+cxx=$(which c++) || { echo "C++ compiler not found"; exit 1; }
+
+build() {
+    $cxx -I../../include -I$jb/usr/include -c *.cc || return 1
+    mv *.o "$b"/ 2>/dev/null || {
+        echo "No object files generated"
+        return 1
+    }
+}
+
+build 1>err.log 2>&1
+
+if [ $? -eq 0 ]; then
+    echo "Build successful"
+else
+    echo "Build failed, check err.log"
+    exit 1
+fi
