@@ -61,3 +61,4 @@ CRumina/crates/rmvm/src/obj/*
 CRumina/crates/rmpack/src/obj/*
 # crates debug
 CRumina/crates/debug.log
+CRumina/src/builtin/obj

@@ -4,7 +4,12 @@ CRumina 是一個使用 C++ 重寫 Rumina 項目的項目
 其重寫目的是因為 jailbreak iOS 中沒有 rustc (至少在 rootless 和 roothide 中並未找到) 導致無法編譯 Rumina
 
 ## build
-1. 構建腳本正在編寫中...
+構建腳本已經製作完成
+```bash
+git clone --recursive https://github.com/AD-iOS/CRumina
+cd CRumina
+./build
+```
 
 ## 文檔
 

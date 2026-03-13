@@ -43,7 +43,7 @@ int run_bytecode_file(const std::string& filename) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: crmvm <file>\n";
+        std::cerr << "Usage: crmvm <file.lmc>\n";
         std::cerr << "  Execute CRumina bytecode file\n";
         return 1;
     }
