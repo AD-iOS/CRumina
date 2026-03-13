@@ -30,7 +30,34 @@ build/*
 !obj/*
 obj/*
 
+# CRumina
 # other
 !Terminal
 Terminal
 .git-pr
+old.tar.zst
+CRumina/all.cxx.src.md
+CRumina/cxx.list.txt
+CRumina/list-cxx
+CRumina/fix
+# build
+# builtin
+CRumina/src/builtin/build/*
+CRumina/src/builtin/obj/*
+CRumina/src/builtin/err.log
+CRumina/src/builtin/term
+CRumina/src/builtin/obj-build
+# src
+CRumina/src/obj/*
+CRumina/src/build/*
+CRumina/src/err.log
+CRumina/src/obj-build
+# debug
+CRumina/src/debug.log
+CRumina/src/builtin/debug.log
+# crates obj
+CRumina/crates/ruminac/src/obj/*
+CRumina/crates/rmvm/src/obj/*
+CRumina/crates/rmpack/src/obj/*
+# crates debug
+CRumina/crates/debug.log

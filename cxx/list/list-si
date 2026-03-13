@@ -1,3 +1,0 @@
-tree ./ > cxx.list.txt
-chown 501:501 cxx.list.txt
-mv cxx.list.txt ../
