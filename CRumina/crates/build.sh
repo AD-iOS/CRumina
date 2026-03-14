@@ -98,7 +98,15 @@ main() {
 
         cd obj/
 
-        build_obj crmpack
+        case "$1" in
+            rmpack) build_obj crmpack; ;;
+            rmvm) build_obj crmvm; ;;
+            ruminac) build_obj cruminac; ;;
+            *)
+                echo "Unknown target: $1"
+                exit 1
+                ;;
+        esac
 
         if [[ "$dpkgarch" =~ ^iphoneos-(arm64|arm64e)$ ]]; then
             ldid -S../../ens/ens.xml -Hsha256 -Hsha1 -M "$TARGET"
